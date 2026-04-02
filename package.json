@@ -1,0 +1,8 @@
+{
+  "name": "aseti-tik-monorepo",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
+}

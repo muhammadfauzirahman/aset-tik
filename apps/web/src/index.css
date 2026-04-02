@@ -1,0 +1,27 @@
+@import "tailwindcss";
+
+@theme {
+  --font-headline: 'Space Mono', monospace;
+  --font-body: 'Space Grotesk', sans-serif;
+  --font-label: 'Space Grotesk', sans-serif;
+  --radius-default: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+  --radius-full: 0px;
+}
+
+body {
+  font-family: 'Space Grotesk', sans-serif;
+  background-color: #F5F0E8;
+}
+
+.font-mono-bold {
+  font-family: 'Space Mono', monospace;
+  font-weight: 700;
+}
+
+.diagonal-pattern {
+  background-image: repeating-linear-gradient(45deg, rgba(26,26,26, 0.1) 0, rgba(26,26,26, 0.1) 1px, transparent 0, transparent 50%);
+  background-size: 10px 10px;
+}

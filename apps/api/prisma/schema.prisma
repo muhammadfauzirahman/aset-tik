@@ -1,0 +1,205 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ═══════════════════════════════════════
+// BetterAuth managed tables
+// ═══════════════════════════════════════
+
+model User {
+  id            String    @id
+  email         String    @unique
+  name          String
+  emailVerified Boolean   @default(false)
+  image         String?
+  role          String?   @default("viewer")
+  banned        Boolean?  @default(false)
+  banReason     String?
+  banExpires    DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  sessions Session[]
+  accounts Account[]
+}
+
+model Session {
+  id               String   @id
+  token            String   @unique
+  expiresAt        DateTime
+  ipAddress        String?
+  userAgent        String?
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  impersonatedBy   String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model Account {
+  id                    String    @id
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountId             String
+  providerId            String
+  accessToken           String?
+  refreshToken          String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  idToken               String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+// ═══════════════════════════════════════
+// Domain tables — ASETI-TIK
+// ═══════════════════════════════════════
+
+model Rai {
+  id        Int      @id @default(autoincrement())
+  kodeRai   String   @unique
+  namaPusat String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Instansi {
+  id           Int      @id @default(autoincrement())
+  namaInstansi String
+  singkatan    String   @unique
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  fasilitasKomputasi FasilitasKomputasi[]
+  perangkatKeras     PerangkatKeras[]
+}
+
+model Lokasi {
+  id         Int      @id @default(autoincrement())
+  namaLokasi String
+  tipeLokasi String
+  alamat     String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model FasilitasKomputasi {
+  id                Int      @id @default(autoincrement())
+  kodeFasilitas     String   @unique
+  namaFasilitas     String
+  jenisFasilitas    String
+  bandwidthIntranet Int      @default(0)
+  bandwidthInternet Int      @default(0)
+  lokasiFisik       String
+  klasifikasiTier   String?
+  kepemilikan       String
+  sistemPengamanan  String   @default("")
+  status            String   @default("Aktif")
+
+  instansiId Int
+  instansi   Instansi @relation(fields: [instansiId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  perangkatKeras    PerangkatKeras[]
+  layananDigital    LayananDigital[]
+  konektivitas      Konektivitas[]
+}
+
+// ═══════════════════════════════════════
+// Unified SPBE Infrastructure Tables
+// ═══════════════════════════════════════
+
+model PerangkatKeras {
+  id                Int      @id @default(autoincrement())
+  kategori          String   // 'Server' | 'Jaringan' | 'Keamanan' | 'Penyimpanan' | 'Periferal'
+  kodeAset          String   @unique
+  namaPerangkat     String
+  deskripsi         String
+  pemilik           String
+  unitPengelola     String
+  statusKepemilikan String   // 'Sendiri' | 'Pihak Ketiga' | 'Sewa' dll
+
+  // Kolom Spesifik (Nullable)
+  kapasitasMemori      String?  // Untuk Server / Jaringan (misal: "64 GB")
+  kapasitasPenyimpanan String?  // Untuk Server / Penyimpanan (misal: "1 TB", "200 GB")
+  teknologiProsesor    String?  // Untuk Server (misal: "Low End", "Mid End")
+  teknikPenyimpanan    String?  // Untuk Penyimpanan / Server (misal: "RAID 0")
+  tipePerangkat        String?  // Untuk Jaringan/Keamanan/Periferal (misal: "Switch", "Router", "Firewall", "Input/Output")
+  metodeAkses          String?  // Untuk Penyimpanan (misal: "NAS", "SAN")
+  lokasiPenempatan     String?  // Opsional jika berbeda dari Fasilitas
+
+  // Relasi
+  fasilitasId Int?
+  fasilitas   FasilitasKomputasi? @relation(fields: [fasilitasId], references: [id])
+  
+  instansiId  Int?
+  instansi    Instansi? @relation(fields: [instansiId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model LayananDigital {
+  id                Int      @id @default(autoincrement())
+  kategori          String   // 'Cloud' | 'Platform' | 'Software'
+  kodeAset          String   @unique
+  namaLayanan       String
+  deskripsi         String
+  pemilik           String   // 'Pemerintah', 'Zoom Inc', dll
+  pengelola         String
+  statusKepemilikan String
+
+  // Kolom Spesifik
+  biayaLayanan      Float?   // Harga sewa
+  jangkaWaktu       String?  // 'Bulanan', 'Tahunan'
+  jenisLisensi      String?  // 'Periodik', 'Perpetual'
+  validitasLisensi  String?  // Expiry date/kondisi
+  tipeSoftware      String?  // 'Sistem Operasi', 'Database', 'Utilitas'
+
+  // Relasi
+  fasilitasId Int?
+  fasilitas   FasilitasKomputasi? @relation(fields: [fasilitasId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Konektivitas {
+  id                Int      @id @default(autoincrement())
+  kategori          String   // 'Jaringan Intra' | 'SPLP'
+  kodeAset          String   @unique
+  namaJaringan      String
+  deskripsi         String
+  pemilik           String
+  statusKepemilikan String
+  
+  // Kolom Spesifik
+  jenisJaringan     String?  // 'IP Transit', 'Simetris'
+  bandwidth         String?  // '10 Gbps'
+  tipeMedia         String?  // 'Fiber Optic', 'Wireless'
+
+  // Relasi 
+  fasilitasId Int?
+  fasilitas   FasilitasKomputasi? @relation(fields: [fasilitasId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
