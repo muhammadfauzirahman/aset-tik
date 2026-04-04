@@ -4,6 +4,11 @@ import { Dashboard } from './pages/Dashboard';
 import { MasterData } from './pages/MasterData';
 import { FasilitasKomputasiPage } from './pages/FasilitasKomputasi';
 import { Login } from './pages/Login';
+import { SistemIntegrasi } from './pages/SistemIntegrasi';
+import { Hardware } from './pages/Hardware';
+import { PlatformCloud } from './pages/PlatformCloud';
+import { Laporan } from './pages/Laporan';
+import { PetaArsitektur } from './pages/PetaArsitektur';
 
 function UnderConstruction() {
   return (
@@ -30,6 +35,11 @@ function App() {
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="master-data" element={<MasterData />} />
         <Route path="fasilitas-komputasi" element={<FasilitasKomputasiPage />} />
+        <Route path="sistem-integrasi" element={<SistemIntegrasi />} />
+        <Route path="hardware" element={<Hardware />} />
+        <Route path="platform" element={<PlatformCloud />} />
+        <Route path="laporan" element={<Laporan />} />
+        <Route path="arsitektur" element={<PetaArsitektur />} />
         <Route path="*" element={<UnderConstruction />} />
       </Route>
     </Routes>

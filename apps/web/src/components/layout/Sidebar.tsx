@@ -5,6 +5,7 @@ export function Sidebar() {
     { name: 'Dashboard', icon: 'dashboard', path: '/dashboard' },
     { name: 'Master Data', icon: 'database', path: '/master-data' },
     { name: 'Fasilitas Komputasi', icon: 'domain', path: '/fasilitas-komputasi' },
+    { name: 'Sistem Integrasi', icon: 'hub', path: '/sistem-integrasi' },
     { name: 'Hardware', icon: 'developer_board', path: '/hardware' },
     { name: 'Platform & Cloud', icon: 'cloud', path: '/platform' },
     { name: 'Peta Arsitektur', icon: 'hub', path: '/arsitektur' },

@@ -39,3 +39,20 @@ export function Select({ label, options, className = '', containerClassName = ''
     </div>
   );
 }
+
+interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
+  label?: string;
+  containerClassName?: string;
+}
+
+export function Textarea({ label, className = '', containerClassName = '', ...props }: TextareaProps) {
+  return (
+    <div className={`flex flex-col space-y-1 w-full ${containerClassName}`}>
+      {label && <label className="font-mono font-bold uppercase text-xs">{label}</label>}
+      <textarea 
+        className={`border-2 border-[#1A1A1A] p-2 font-body text-sm bg-white outline-none focus:border-[#FFD600] focus:shadow-[4px_4px_0px_0px_#FFD600] transition-all rounded-none min-h-[100px] ${className}`}
+        {...props}
+      />
+    </div>
+  );
+}

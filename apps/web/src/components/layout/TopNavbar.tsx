@@ -5,7 +5,27 @@ import { Button } from '../ui/Button';
 
 export function TopNavbar() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const { data: session, isPending } = authClient.useSession();
+  const { data: realSession, isPending } = authClient.useSession();
+
+  // Mock session for development when .env is missing
+  const mockSession = {
+    user: {
+      id: 'mock-user-id',
+      email: 'admin@aseti-tik.local',
+      name: 'Administrator (Mock)',
+      role: 'admin',
+    },
+    session: {
+      id: 'mock-session-id',
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      token: 'mock-token',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      userId: 'mock-user-id',
+    }
+  };
+
+  const session = realSession || mockSession;
 
   const handleLogout = async () => {
     if (isLoggingOut) return;

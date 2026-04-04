@@ -1,6 +1,6 @@
 import { Card, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { Badge } from '../components/ui/Badge';
+import { StatusBadge } from '../components/ui/StatusBadge';
 import { Table, TableHead, TableHeader, TableBody, TableRow, TableCell } from '../components/ui/Table';
 
 export function Dashboard() {
@@ -136,25 +136,25 @@ export function Dashboard() {
           <TableBody>
             <TableRow>
               <TableCell className="font-mono-bold">SRV-DC1-092</TableCell>
-              <TableCell><Badge color="success">Maintenance Complete</Badge></TableCell>
+              <TableCell><StatusBadge status="Maintenance Complete" /></TableCell>
               <TableCell>Admin TIK A</TableCell>
               <TableCell className="font-mono text-right text-sm">14:20:05</TableCell>
             </TableRow>
             <TableRow>
               <TableCell className="font-mono-bold">LCS-MSFT-E5-01</TableCell>
-              <TableCell><Badge color="primary">Renewal Requested</Badge></TableCell>
+              <TableCell><StatusBadge status="Renewal Requested" /></TableCell>
               <TableCell>Procurement Dept</TableCell>
               <TableCell className="font-mono text-right text-sm">13:45:12</TableCell>
             </TableRow>
             <TableRow>
               <TableCell className="font-mono-bold">STG-NETAPP-A4</TableCell>
-              <TableCell><Badge color="danger">Capacity Alert</Badge></TableCell>
+              <TableCell><StatusBadge status="Capacity Alert" /></TableCell>
               <TableCell>System Automated</TableCell>
               <TableCell className="font-mono text-right text-sm">12:10:30</TableCell>
             </TableRow>
             <TableRow>
               <TableCell className="font-mono-bold">VM-PROD-WEB-04</TableCell>
-              <TableCell><Badge color="black">Reboot Successful</Badge></TableCell>
+              <TableCell><StatusBadge status="Reboot Successful" /></TableCell>
               <TableCell>Admin TIK B</TableCell>
               <TableCell className="font-mono text-right text-sm">11:55:00</TableCell>
             </TableRow>
