@@ -10,9 +10,11 @@ import { FilterTabs } from '../components/ui/FilterTabs';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { ActionButtons } from '../components/ui/ActionButtons';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
+import { TableControls, Pagination } from '../components/ui/TableControls';
 
 // Hooks
 import { useMasterData } from '../hooks/useMasterData';
+import { useTable } from '../hooks/useTable';
 import { useLoadingProgress } from '../hooks/useLoadingProgress';
 import type { Rai, Instansi, Lokasi } from '../types';
 
@@ -98,9 +100,34 @@ export function MasterData() {
     else addInstansi({ namaInstansi: instNama, singkatan: instSingkatan }, { onSuccess: () => notifyMutationFinished(closeAllModals), onError: resetLoading }); 
   };
 
+  // Table instances for each tab (to maintain type safety)
+  const tableInstansi = useTable<Instansi>({ data: instansi });
+  const tableLokasi = useTable<Lokasi>({ data: lokasi });
+  const tableRai = useTable<Rai>({ data: rai });
+
+  // Helper to get active table state
+  const getActiveTable = () => {
+    if (activeTab === 'instansi') return tableInstansi;
+    if (activeTab === 'lokasi') return tableLokasi;
+    return tableRai;
+  };
+
+  const { 
+    searchQuery, setSearchQuery, pageSize, setPageSize, 
+    currentPage, setCurrentPage, totalPages, exportToCSV,
+    sortConfig, requestSort
+  } = getActiveTable();
+
+  // Reset pagination when switching tabs
+  const handleTabChange = (tab: MasterTab) => {
+    setActiveTab(tab);
+    // We don't reset other tables' state, but we sync the UI to the new active table
+  };
+
   // Lokasi Handlers
   const openAddLokasi = () => { setEditingLokasi(null); setLokNama(''); setLokAlamat(''); setLokTipe('Pusat Data'); setLokasiModalOpen(true); };
   const openEditLokasi = (item: Lokasi) => { setEditingLokasi(item); setLokNama(item.namaLokasi); setLokTipe(item.tipeLokasi); setLokAlamat(item.alamat); setLokasiModalOpen(true); };
+  
   const handleSaveLokasi = (e: React.FormEvent) => { 
     e.preventDefault(); 
     startSaving();
@@ -143,13 +170,21 @@ export function MasterData() {
       <FilterTabs<MasterTab>
         tabs={['instansi', 'lokasi', 'rai']} 
         activeTab={activeTab} 
-        onTabChange={setActiveTab} 
+        onTabChange={handleTabChange} 
         getLabel={(tab) => {
           if (tab === 'rai') return 'Referensi Arsitektur';
           if (tab === 'instansi') return 'Instansi';
           if (tab === 'lokasi') return 'Lokasi';
           return tab;
         }}
+      />
+      
+      <TableControls 
+        searchQuery={searchQuery}
+        onSearch={setSearchQuery}
+        pageSize={pageSize}
+        onPageSizeChange={setPageSize}
+        onExport={() => exportToCSV(`master-data-${activeTab}.csv`)}
       />
 
       {activeTab === 'rai' && (
@@ -160,12 +195,12 @@ export function MasterData() {
           </div>
           <Table>
             <TableHead>
-              <TableHeader>Kode</TableHeader>
-              <TableHeader>Kategori</TableHeader>
+              <TableHeader sortKey="kodeRai" onSort={requestSort} activeSortConfig={sortConfig}>Kode</TableHeader>
+              <TableHeader sortKey="namaPusat" onSort={requestSort} activeSortConfig={sortConfig}>Kategori</TableHeader>
               <TableHeader className="text-right">Aksi</TableHeader>
             </TableHead>
             <TableBody>
-              {rai.map(r => (
+              {tableRai.paginatedData.map(r => (
                 <TableRow key={r.id}>
                   <TableCell className="font-mono font-bold text-xs">{r.kodeRai}</TableCell>
                   <TableCell className="text-sm">{r.namaPusat}</TableCell>
@@ -201,12 +236,12 @@ export function MasterData() {
           </div>
           <Table>
             <TableHead>
-              <TableHeader>Singkatan</TableHeader>
-              <TableHeader>Nama Lengkap</TableHeader>
+              <TableHeader sortKey="singkatan" onSort={requestSort} activeSortConfig={sortConfig}>Singkatan</TableHeader>
+              <TableHeader sortKey="namaInstansi" onSort={requestSort} activeSortConfig={sortConfig}>Nama Lengkap</TableHeader>
               <TableHeader className="text-right">Aksi</TableHeader>
             </TableHead>
             <TableBody>
-              {instansi.map(i => (
+              {tableInstansi.paginatedData.map(i => (
                 <TableRow key={i.id}>
                   <TableCell className="font-mono font-bold text-xs">{i.singkatan}</TableCell>
                   <TableCell className="text-sm">{i.namaInstansi}</TableCell>
@@ -242,12 +277,12 @@ export function MasterData() {
           </div>
           <Table>
             <TableHead>
-              <TableHeader>Nama Lokasi</TableHeader>
-              <TableHeader>Tipe</TableHeader>
+              <TableHeader sortKey="namaLokasi" onSort={requestSort} activeSortConfig={sortConfig}>Nama Lokasi</TableHeader>
+              <TableHeader sortKey="tipeLokasi" onSort={requestSort} activeSortConfig={sortConfig}>Tipe</TableHeader>
               <TableHeader className="text-right">Aksi</TableHeader>
             </TableHead>
             <TableBody>
-              {lokasi.map(l => (
+              {tableLokasi.paginatedData.map(l => (
                 <TableRow key={l.id}>
                   <TableCell>
                     <div className="font-bold text-sm">{l.namaLokasi}</div>
@@ -272,9 +307,23 @@ export function MasterData() {
                   </TableCell>
                 </TableRow>
               ))}
-              {lokasi.length === 0 && <TableRow><TableCell colSpan={3} className="text-center py-8 opacity-50 italic">Tidak ada data lokasi</TableCell></TableRow>}
+              {tableLokasi.paginatedData.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={3} className="text-center py-12">
+                    <div className="flex flex-col items-center opacity-40">
+                      <span className="material-symbols-outlined text-4xl mb-2">search_off</span>
+                      <p className="font-mono text-sm uppercase italic">Data tidak ditemukan</p>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
+          <Pagination 
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
         </Card>
       )}
 

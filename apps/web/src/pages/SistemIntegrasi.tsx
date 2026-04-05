@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input, Select, Textarea } from '../components/ui/Input';
@@ -13,9 +13,11 @@ import { StatusBadge } from '../components/ui/StatusBadge';
 import { ActionButtons } from '../components/ui/ActionButtons';
 import { DetailField } from '../components/ui/DetailField';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
+import { TableControls, Pagination } from '../components/ui/TableControls';
 
 // Hooks & Stores
 import { useKonektivitas } from '../hooks/useKonektivitas';
+import { useTable } from '../hooks/useTable';
 import { useAssetCRUD } from '../hooks/useAssetCRUD';
 import { useLoadingProgress } from '../hooks/useLoadingProgress';
 import type { Konektivitas, KonektivitasKategori } from '../types';
@@ -28,8 +30,6 @@ export function SistemIntegrasi() {
     addKonektivitas, 
     updateKonektivitas, 
     deleteKonektivitas,
-    isAdding,
-    isDeleting
   } = useKonektivitas();
   
   const { isSaving, progress, startSaving, notifyMutationFinished, reset: resetLoading } = useLoadingProgress();
@@ -40,6 +40,21 @@ export function SistemIntegrasi() {
   } = useAssetCRUD<Konektivitas>();
 
   const [activeFilter, setActiveFilter] = useState<'Semua' | KonektivitasKategori>('Semua');
+
+  const filteredDataRaw = useMemo(() => {
+    return activeFilter === 'Semua' ? konektivitas : konektivitas.filter(k => k.kategori === activeFilter);
+  }, [konektivitas, activeFilter]);
+
+  const { 
+    paginatedData, sortConfig, requestSort, searchQuery, setSearchQuery, 
+    pageSize, setPageSize, currentPage, setCurrentPage, totalPages, exportToCSV
+  } = useTable({ data: filteredDataRaw });
+
+  const handleTabChange = (tab: any) => {
+    setActiveTab(tab);
+    setCurrentPage(1);
+    setSearchQuery('');
+  };
 
   // Form State
   const [formData, setFormData] = useState<Partial<Konektivitas>>({
@@ -110,8 +125,6 @@ export function SistemIntegrasi() {
     );
   }
 
-  const filteredData = activeFilter === 'Semua' ? konektivitas : konektivitas.filter(k => k.kategori === activeFilter);
-
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
       <PageHeader 
@@ -128,18 +141,26 @@ export function SistemIntegrasi() {
         { label: 'Total Konektivitas', value: konektivitas.length, color: 'blue' },
       ]} />
 
-      <FilterTabs activeTab={activeFilter} onTabChange={(f) => setActiveFilter(f as any)} tabs={['Semua', 'Jaringan Intra', 'SPLP']} />
+      <FilterTabs activeTab={activeFilter} onTabChange={handleTabChange} tabs={['Semua', 'Jaringan Intra', 'SPLP']} />
+
+      <TableControls 
+        searchQuery={searchQuery}
+        onSearch={setSearchQuery}
+        pageSize={pageSize}
+        onPageSizeChange={setPageSize}
+        onExport={() => exportToCSV(`konektivitas-${activeFilter.toLowerCase()}.csv`)}
+      />
 
       <Card className="shadow-[8px_8px_0px_0px_#1A1A1A] overflow-hidden">
         <Table>
           <TableHead>
-            <TableHeader>Kode & Kategori</TableHeader>
-            <TableHeader>Layanan / Jaringan</TableHeader>
-            <TableHeader>Pemilik</TableHeader>
+            <TableHeader sortKey="kodeAset" onSort={requestSort} activeSortConfig={sortConfig}>Kode & Kategori</TableHeader>
+            <TableHeader sortKey="namaJaringan" onSort={requestSort} activeSortConfig={sortConfig}>Layanan / Jaringan</TableHeader>
+            <TableHeader sortKey="pemilik" onSort={requestSort} activeSortConfig={sortConfig}>Pemilik</TableHeader>
             <TableHeader className="text-right">Aksi</TableHeader>
           </TableHead>
           <TableBody>
-            {filteredData.map((k) => (
+            {paginatedData.map((k: Konektivitas) => (
               <TableRow key={k.id}>
                 <TableCell className="w-48">
                   <div className="font-mono-bold text-sm mb-1">{k.kodeAset}</div>
@@ -169,8 +190,23 @@ export function SistemIntegrasi() {
                 </TableCell>
               </TableRow>
             ))}
+            {paginatedData.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={4} className="text-center py-12">
+                  <div className="flex flex-col items-center opacity-40">
+                    <span className="material-symbols-outlined text-4xl mb-2">search_off</span>
+                    <p className="font-mono text-sm uppercase italic">Data tidak ditemukan</p>
+                  </div>
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
+        <Pagination 
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+        />
       </Card>
 
       <Modal isOpen={isAddModalOpen || isEditModalOpen} onClose={closeModals} title={isEditModalOpen ? "Edit Konektivitas" : "Tambah Konektivitas"} size="lg">

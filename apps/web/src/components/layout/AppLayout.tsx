@@ -1,5 +1,5 @@
 import { Outlet } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { TopNavbar } from './TopNavbar';
 import { Sidebar } from './Sidebar';
 import { authClient } from '../../lib/auth-client';
@@ -9,6 +9,21 @@ export function AppLayout() {
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
+
+  // Lock scroll when sidebar is open on mobile
+  useEffect(() => {
+    if (isSidebarOpen && window.innerWidth < 768) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      // Small delay to ensure no other component (like a modal) is currently locking it
+      setTimeout(() => {
+        const hasActiveModals = document.querySelectorAll('.modal-root').length > 0;
+        if (!hasActiveModals) {
+          document.body.style.overflow = '';
+        }
+      }, 0);
+    }
+  }, [isSidebarOpen]);
 
   if (isPending && !realSession) {
     return (

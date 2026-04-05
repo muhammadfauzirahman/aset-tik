@@ -39,21 +39,28 @@ export function Modal({
 
     if (isOpen) {
       document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
+      // To prevent layout shift on some browsers
+      document.body.style.paddingRight = 'var(--scrollbar-width, 0px)';
     }
 
     window.addEventListener('keydown', handleEsc);
     return () => {
       window.removeEventListener('keydown', handleEsc);
-      document.body.style.overflow = 'unset';
+      // Wait for React to finish unmounting/state updates
+      setTimeout(() => {
+        const activeModals = document.querySelectorAll('.modal-root').length;
+        if (activeModals === 0) {
+          document.body.style.overflow = '';
+          document.body.style.paddingRight = '';
+        }
+      }, 0);
     };
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+    <div className="modal-root fixed inset-0 z-[100] flex items-center justify-center p-4">
       {/* Overlay */}
       <div 
         className="absolute inset-0 bg-[#1A1A1A] opacity-60" 
@@ -70,7 +77,7 @@ export function Modal({
               onClick={onClose}
               className="hover:text-[#FFD600] transition-colors cursor-pointer"
             >
-              <span className="material-symbols-outlined font-bold">close</span>
+              <span className="material-symbols-outlined font-black">close</span>
             </button>
           )}
         </div>

@@ -13,10 +13,12 @@ import { StatusBadge } from '../components/ui/StatusBadge';
 import { ActionButtons } from '../components/ui/ActionButtons';
 import { DetailField } from '../components/ui/DetailField';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
+import { TableControls, Pagination } from '../components/ui/TableControls';
 
 // Hooks & Stores
 import { useAssetCRUD } from '../hooks/useAssetCRUD';
 import { useFasilitas } from '../hooks/useFasilitas';
+import { useTable } from '../hooks/useTable';
 import { useMasterData } from '../hooks/useMasterData';
 import { useHardware } from '../hooks/useHardware';
 import { useLayananDigital } from '../hooks/useLayananDigital';
@@ -31,8 +33,6 @@ export function FasilitasKomputasiPage() {
     addFasilitas,
     updateFasilitas,
     deleteFasilitas,
-    isAdding,
-    isUpdating
   } = useFasilitas();
 
   const { isSaving, progress, startSaving, notifyMutationFinished, reset: resetLoading } = useLoadingProgress();
@@ -98,12 +98,13 @@ export function FasilitasKomputasiPage() {
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     startSaving();
-    const payload: Omit<FasilitasKomputasi, 'id' | 'childAssetsCount'> = {
+    const payload: Omit<FasilitasKomputasi, 'id' | 'childAssetsCount' | 'created_at' | 'updated_at'> = {
       kodeFasilitas: kode, namaFasilitas: nama, jenisFasilitas: jenis,
       bandwidthIntranet: bwIntra, bandwidthInternet: bwInter, lokasiFisik: lokasi,
       klasifikasiTier: jenis === 'Pusat Data' ? tier : null, kepemilikan,
       sistemPengamanan: pengamanan, instansiId, status
-    };
+    } as any;
+
     const options = {
       onSuccess: () => notifyMutationFinished(closeModals),
       onError: resetLoading
@@ -117,7 +118,20 @@ export function FasilitasKomputasiPage() {
 
   const [activeTab, setActiveTab] = useState<'Semua' | JenisFasilitas>('Semua');
 
-  const filteredData = activeTab === 'Semua' ? fasilitas : fasilitas.filter(f => f.jenisFasilitas === activeTab);
+  const filteredDataRaw = useMemo(() => {
+    return activeTab === 'Semua' ? fasilitas : fasilitas.filter(f => f.jenisFasilitas === activeTab);
+  }, [fasilitas, activeTab]);
+
+  const { 
+    paginatedData, sortConfig, requestSort, searchQuery, setSearchQuery, 
+    pageSize, setPageSize, currentPage, setCurrentPage, totalPages, exportToCSV
+  } = useTable({ data: filteredDataRaw });
+
+  const handleTabChange = (tab: any) => {
+    setActiveTab(tab);
+    setCurrentPage(1);
+    setSearchQuery('');
+  };
 
   const attachedHardware = useMemo(() =>
     detailItem ? hardware.filter(h => h.fasilitasId === detailItem.id) : [],
@@ -159,19 +173,27 @@ export function FasilitasKomputasiPage() {
         { label: 'Aset Taut', value: hardware.length + software.length, color: 'blue' },
       ]} />
 
-      <FilterTabs tabs={['Semua', 'Pusat Data', 'Pusat Komputasi', 'Pusat Kendali']} activeTab={activeTab} onTabChange={setActiveTab} />
+      <FilterTabs tabs={['Semua', 'Pusat Data', 'Pusat Komputasi', 'Pusat Kendali']} activeTab={activeTab} onTabChange={handleTabChange} />
+
+      <TableControls 
+        searchQuery={searchQuery}
+        onSearch={setSearchQuery}
+        pageSize={pageSize}
+        onPageSizeChange={setPageSize}
+        onExport={() => exportToCSV(`fasilitas-${activeTab.toLowerCase()}.csv`)}
+      />
 
       <Card className="shadow-[8px_8px_0px_0px_#1A1A1A] overflow-hidden">
         <Table>
           <TableHead>
-            <TableHeader>Kode</TableHeader>
-            <TableHeader>Nama & Jenis</TableHeader>
-            <TableHeader>Instansi / Lokasi</TableHeader>
-            <TableHeader>Status</TableHeader>
+            <TableHeader sortKey="kodeFasilitas" onSort={requestSort} activeSortConfig={sortConfig}>Kode</TableHeader>
+            <TableHeader sortKey="namaFasilitas" onSort={requestSort} activeSortConfig={sortConfig}>Nama & Jenis</TableHeader>
+            <TableHeader sortKey="instansiId" onSort={requestSort} activeSortConfig={sortConfig}>Instansi / Lokasi</TableHeader>
+            <TableHeader sortKey="status" onSort={requestSort} activeSortConfig={sortConfig}>Status</TableHeader>
             <TableHeader className="text-right">Aksi</TableHeader>
           </TableHead>
           <TableBody>
-            {filteredData.map((f) => (
+            {paginatedData.map((f: FasilitasKomputasi) => (
               <TableRow key={f.id}>
                 <TableCell className="font-mono-bold opacity-60 text-xs">{f.kodeFasilitas}</TableCell>
                 <TableCell>
@@ -202,13 +224,28 @@ export function FasilitasKomputasiPage() {
                 </TableCell>
               </TableRow>
             ))}
+            {paginatedData.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center py-12">
+                  <div className="flex flex-col items-center opacity-40">
+                    <span className="material-symbols-outlined text-4xl mb-2">search_off</span>
+                    <p className="font-mono text-sm uppercase italic">Data tidak ditemukan</p>
+                  </div>
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
+        <Pagination 
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+        />
       </Card>
 
       <Modal isOpen={isAddModalOpen || isEditModalOpen} onClose={closeModals} title={isEditModalOpen ? "Edit Data Fasilitas" : "Tambah Data Fasilitas"} size="lg" closeOnOverlayClick={false}>
         <form onSubmit={handleSave} className="space-y-6 px-1 pb-4">
-          <fieldset disabled={isAdding || isUpdating}>
+          <fieldset disabled={isSaving}>
             <section className="space-y-4">
               <h4 className="text-xs font-mono-bold uppercase bg-[#B9FF66] border-2 border-black px-2 py-1 inline-block shadow-[2px_2px_0_0_#000]">
                 1. Profil & Klasifikasi

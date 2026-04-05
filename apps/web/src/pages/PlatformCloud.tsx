@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input, Select, Textarea } from '../components/ui/Input';
@@ -13,12 +13,14 @@ import { StatusBadge } from '../components/ui/StatusBadge';
 import { ActionButtons } from '../components/ui/ActionButtons';
 import { DetailField } from '../components/ui/DetailField';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
+import { TableControls, Pagination } from '../components/ui/TableControls';
 
 // Formatters
 import { formatRupiah, parseRupiah, formatDate } from '../lib/formatters';
 
 // Stores & Hooks
 import { useLayananDigital } from '../hooks/useLayananDigital';
+import { useTable } from '../hooks/useTable';
 import { useMasterData } from '../hooks/useMasterData';
 import { useHardware } from '../hooks/useHardware';
 import { useKonektivitas } from '../hooks/useKonektivitas';
@@ -34,8 +36,6 @@ export function PlatformCloud() {
     addLayananDigital: addSoftware, 
     updateLayananDigital: updateSoftware, 
     deleteLayananDigital: deleteSoftware,
-    isAdding,
-    isUpdating
   } = useLayananDigital();
 
   const { isSaving, progress, startSaving, notifyMutationFinished, reset: resetLoading } = useLoadingProgress();
@@ -45,6 +45,21 @@ export function PlatformCloud() {
   const { konektivitas } = useKonektivitas();
 
   const [activeFilter, setActiveFilter] = useState<'Semua' | SoftwareKategori>('Semua');
+
+  const filteredSoftwareRaw = useMemo(() => {
+    return activeFilter === 'Semua' ? software : software.filter(s => s.kategori === activeFilter);
+  }, [software, activeFilter]);
+
+  const { 
+    paginatedData, sortConfig, requestSort, searchQuery, setSearchQuery, 
+    pageSize, setPageSize, currentPage, setCurrentPage, totalPages, exportToCSV
+  } = useTable({ data: filteredSoftwareRaw });
+
+  const handleTabChange = (tab: any) => {
+    setActiveFilter(tab);
+    setCurrentPage(1);
+    setSearchQuery('');
+  };
 
   // Form State
   const [kategori, setKategori] = useState<SoftwareKategori>('Cloud');
@@ -191,8 +206,6 @@ export function PlatformCloud() {
     );
   }
 
-  const filteredSoftware = activeFilter === 'Semua' ? software : software.filter(s => s.kategori === activeFilter);
-
   const summaryItems = [
     { label: 'Cloud Services', value: software.filter(s => s.kategori === 'Cloud').length, color: 'yellow' as const },
     { label: 'Software Platform', value: software.filter(s => s.kategori === 'Platform').length, color: 'green' as const },
@@ -214,20 +227,28 @@ export function PlatformCloud() {
        <FilterTabs 
         tabs={['Semua', 'Platform', 'Cloud']} 
         activeTab={activeFilter} 
-        onTabChange={(f) => setActiveFilter(f as any)} 
+        onTabChange={handleTabChange} 
         getLabel={(tab) => tab === 'Platform' ? 'Software Platform' : tab === 'Cloud' ? 'Komputasi Awan' : 'Semua'}
+      />
+
+      <TableControls 
+        searchQuery={searchQuery}
+        onSearch={setSearchQuery}
+        pageSize={pageSize}
+        onPageSizeChange={setPageSize}
+        onExport={() => exportToCSV(`platform-cloud-${activeFilter.toLowerCase()}.csv`)}
       />
 
       <Card className="shadow-[8px_8px_0px_0px_#1A1A1A] overflow-hidden">
         <Table>
           <TableHead>
-            <TableHeader>Layanan & Kode</TableHeader>
-            <TableHeader>Kategori</TableHeader>
-            <TableHeader>Pemilik / Pengelola</TableHeader>
+            <TableHeader sortKey="namaLayanan" onSort={requestSort} activeSortConfig={sortConfig}>Layanan & Kode</TableHeader>
+            <TableHeader sortKey="kategori" onSort={requestSort} activeSortConfig={sortConfig}>Kategori</TableHeader>
+            <TableHeader sortKey="pemilik" onSort={requestSort} activeSortConfig={sortConfig}>Pemilik / Pengelola</TableHeader>
             <TableHeader className="text-right">Aksi</TableHeader>
           </TableHead>
           <TableBody>
-            {filteredSoftware.map((s) => (
+            {paginatedData.map((s: LayananDigital) => (
               <TableRow key={s.id}>
                 <TableCell>
                   <div className="font-mono-bold text-[10px] opacity-60 uppercase">{s.kodeAset}</div>
@@ -256,13 +277,28 @@ export function PlatformCloud() {
                 </TableCell>
               </TableRow>
             ))}
+            {paginatedData.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={4} className="text-center py-12">
+                  <div className="flex flex-col items-center opacity-40">
+                    <span className="material-symbols-outlined text-4xl mb-2">search_off</span>
+                    <p className="font-mono text-sm uppercase italic">Data tidak ditemukan</p>
+                  </div>
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
+        <Pagination 
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+        />
       </Card>
 
       <Modal isOpen={isAddModalOpen || isEditModalOpen} onClose={closeModals} title={isEditModalOpen ? "Edit Aset Digital" : "Tambah Aset Digital"} size="lg" closeOnOverlayClick={false}>
         <form onSubmit={handleSave} className="space-y-6 px-1 pb-4">
-          <fieldset disabled={isAdding || isUpdating}>
+          <fieldset disabled={isSaving}>
             <section className="space-y-4">
               <h4 className="text-xs font-mono-bold uppercase bg-[#B9FF66] border-2 border-black px-2 py-1 inline-block shadow-[2px_2px_0_0_#000]">
                 1. Identitas & Profil Layanan

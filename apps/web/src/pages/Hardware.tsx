@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input, Select, Textarea } from '../components/ui/Input';
@@ -13,9 +13,11 @@ import { StatusBadge } from '../components/ui/StatusBadge';
 import { ActionButtons } from '../components/ui/ActionButtons';
 import { DetailField } from '../components/ui/DetailField';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
+import { TableControls, Pagination } from '../components/ui/TableControls';
 
 // Stores & Hooks
 import { useHardware } from '../hooks/useHardware';
+import { useTable } from '../hooks/useTable';
 import { useFasilitas } from '../hooks/useFasilitas';
 import { useLayananDigital } from '../hooks/useLayananDigital';
 import { useMasterData } from '../hooks/useMasterData';
@@ -34,9 +36,6 @@ export function Hardware() {
     addHardware, 
     updateHardware, 
     deleteHardware,
-    isAdding,
-    isUpdating,
-    isDeleting
   } = useHardware();
 
   const { isSaving, progress, startSaving, notifyMutationFinished, reset: resetLoading } = useLoadingProgress();
@@ -46,6 +45,23 @@ export function Hardware() {
   const { instansi } = useMasterData();
 
   const [activeFilter, setActiveFilter] = useState<'Semua' | HardwareKategori>('Semua');
+
+  const filteredHardwareRaw = useMemo(() => {
+    return activeFilter === 'Semua' 
+      ? hardware 
+      : hardware.filter(h => h.kategori === activeFilter);
+  }, [hardware, activeFilter]);
+
+  const { 
+    paginatedData, sortConfig, requestSort, searchQuery, setSearchQuery, 
+    pageSize, setPageSize, currentPage, setCurrentPage, totalPages, exportToCSV
+  } = useTable({ data: filteredHardwareRaw });
+
+  const handleFilterChange = (f: any) => {
+    setActiveFilter(f);
+    setCurrentPage(1);
+    setSearchQuery('');
+  };
 
   // Form State
   const [kategori, setKategori] = useState<HardwareKategori>('Server');
@@ -210,10 +226,6 @@ export function Hardware() {
     );
   }
 
-  const filteredHardware = activeFilter === 'Semua' 
-    ? hardware 
-    : hardware.filter(h => h.kategori === activeFilter);
-
   const summaryItems = [
     { label: 'Server', value: hardware.filter(h => h.kategori === 'Server').length, color: 'green' as const },
     { label: 'Jaringan', value: hardware.filter(h => h.kategori === 'Jaringan').length, color: 'yellow' as const },
@@ -236,19 +248,27 @@ export function Hardware() {
       <FilterTabs 
         tabs={['Semua', 'Server', 'Jaringan', 'Keamanan', 'Penyimpanan', 'Periferal']}
         activeTab={activeFilter}
-        onTabChange={(f) => setActiveFilter(f as any)}
+        onTabChange={handleFilterChange}
+      />
+
+      <TableControls 
+        searchQuery={searchQuery}
+        onSearch={setSearchQuery}
+        pageSize={pageSize}
+        onPageSizeChange={setPageSize}
+        onExport={() => exportToCSV(`hardware-${activeFilter.toLowerCase()}.csv`)}
       />
 
       <Card className="shadow-[8px_8px_0px_0px_#1A1A1A] overflow-hidden">
         <Table>
           <TableHead>
-            <TableHeader>Aset & Kategori</TableHeader>
-            <TableHeader>Pengelola & Lokasi</TableHeader>
-            <TableHeader>Kepemilikan</TableHeader>
+            <TableHeader sortKey="namaPerangkat" onSort={requestSort} activeSortConfig={sortConfig}>Aset & Kategori</TableHeader>
+            <TableHeader sortKey="unitPengelola" onSort={requestSort} activeSortConfig={sortConfig}>Pengelola & Lokasi</TableHeader>
+            <TableHeader sortKey="statusKepemilikan" onSort={requestSort} activeSortConfig={sortConfig}>Kepemilikan</TableHeader>
             <TableHeader className="text-right">Aksi</TableHeader>
           </TableHead>
           <TableBody>
-            {filteredHardware.map((h) => (
+            {paginatedData.map((h: PerangkatKeras) => (
               <TableRow key={h.id}>
                 <TableCell>
                   <div className="font-mono-bold text-xs mb-1 uppercase opacity-60">{h.kodeAset}</div>
@@ -281,8 +301,23 @@ export function Hardware() {
                 </TableCell>
               </TableRow>
             ))}
+            {paginatedData.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={4} className="text-center py-12">
+                  <div className="flex flex-col items-center opacity-40">
+                    <span className="material-symbols-outlined text-4xl mb-2">search_off</span>
+                    <p className="font-mono text-sm uppercase italic">Data tidak ditemukan</p>
+                  </div>
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
+        <Pagination 
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+        />
       </Card>
 
       <Modal 
@@ -293,7 +328,7 @@ export function Hardware() {
         closeOnOverlayClick={false}
       >
         <form onSubmit={handleSave} className="space-y-6 px-1 pb-4">
-          <fieldset disabled={isAdding || isUpdating}>
+          <fieldset disabled={isSaving}>
             {/* Section 1: Identitas */}
             <section className="space-y-4">
               <h4 className="text-xs font-mono-bold uppercase bg-[#B9FF66] border-2 border-black px-2 py-1 inline-block shadow-[2px_2px_0_0_#000]">
