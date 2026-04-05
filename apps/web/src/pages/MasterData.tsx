@@ -151,11 +151,11 @@ export function MasterData() {
     );
   }
 
-  const summaryItems = [
-    { label: 'Total Instansi', value: instansi.length, color: 'blue' as const },
-    { label: 'Lokasi Fisik', value: lokasi.length, color: 'yellow' as const },
-    { label: 'Ref. Arsitektur', value: rai.length, color: 'green' as const },
-  ];
+  const counts = {
+    instansi: instansi.length,
+    lokasi: lokasi.length,
+    rai: rai.length,
+  };
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
@@ -164,8 +164,6 @@ export function MasterData() {
         subtitle="Kelola entitas dasar, referensi arsitektur, dan lokasi strategis aset TIK." 
         icon="database" 
       />
-      
-      <SummaryGrid items={summaryItems} />
       
       <FilterTabs<MasterTab>
         tabs={['instansi', 'lokasi', 'rai']} 
@@ -177,6 +175,7 @@ export function MasterData() {
           if (tab === 'lokasi') return 'Lokasi';
           return tab;
         }}
+        counts={counts}
       />
       
       <TableControls 

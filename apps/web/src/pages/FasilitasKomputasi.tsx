@@ -8,7 +8,8 @@ import { Button } from '../components/ui/Button';
 // Reusable Components
 import { PageHeader } from '../components/layout/PageHeader';
 import { FilterTabs } from '../components/ui/FilterTabs';
-import { SummaryGrid } from '../components/ui/SummaryGrid';
+import { MetricPills } from '../components/ui/MetricPills';
+import { SummaryGrid } from '../components/ui/SummaryGrid'; // Might still be used elsewhere or just remove
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { ActionButtons } from '../components/ui/ActionButtons';
 import { DetailField } from '../components/ui/DetailField';
@@ -157,23 +158,34 @@ export function FasilitasKomputasiPage() {
     );
   }
 
+  const counts = {
+    'Semua': fasilitas.length,
+    'Pusat Data': fasilitas.filter(f => f.jenisFasilitas === 'Pusat Data').length,
+    'Pusat Komputasi': fasilitas.filter(f => f.jenisFasilitas === 'Pusat Komputasi').length,
+    'Pusat Kendali': fasilitas.filter(f => f.jenisFasilitas === 'Pusat Kendali').length,
+  };
+
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
       <PageHeader
         title="Fasilitas Komputasi"
         subtitle="Pusat Data, Komputasi, dan Kendali yang menjadi fondasi penempatan aset infrastruktur TIK SPBE."
-        onAdd={handleAdd}
+        onAdd={openAddModal}
         addLabel="Tambah Fasilitas"
         icon="domain_add"
       />
 
-      <SummaryGrid items={[
-        { label: 'Total Fasilitas', value: fasilitas.length, color: 'yellow' },
-        { label: 'Kapasitas Internet', value: `${fasilitas.reduce((a, c) => a + c.bandwidthInternet, 0)} Mbps`, color: 'green' },
-        { label: 'Aset Taut', value: hardware.length + software.length, color: 'blue' },
+      <MetricPills metrics={[
+        { label: 'Internet BW', value: `${fasilitas.reduce((a, c) => a + (c.bandwidthInternet || 0), 0)} Mbps`, color: 'green', icon: 'speed' },
+        { label: 'Aset Taut', value: hardware.length + software.length, color: 'cyan', icon: 'link' },
       ]} />
 
-      <FilterTabs tabs={['Semua', 'Pusat Data', 'Pusat Komputasi', 'Pusat Kendali']} activeTab={activeTab} onTabChange={handleTabChange} />
+      <FilterTabs 
+        tabs={['Semua', 'Pusat Data', 'Pusat Komputasi', 'Pusat Kendali']} 
+        activeTab={activeTab} 
+        onTabChange={handleTabChange} 
+        counts={counts}
+      />
 
       <TableControls 
         searchQuery={searchQuery}

@@ -8,7 +8,7 @@ import { Modal } from '../components/ui/Modal';
 // Reusable Components
 import { PageHeader } from '../components/layout/PageHeader';
 import { FilterTabs } from '../components/ui/FilterTabs';
-import { SummaryGrid } from '../components/ui/SummaryGrid';
+import { MetricPills } from '../components/ui/MetricPills';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { ActionButtons } from '../components/ui/ActionButtons';
 import { DetailField } from '../components/ui/DetailField';
@@ -206,29 +206,32 @@ export function PlatformCloud() {
     );
   }
 
-  const summaryItems = [
-    { label: 'Cloud Services', value: software.filter(s => s.kategori === 'Cloud').length, color: 'yellow' as const },
-    { label: 'Software Platform', value: software.filter(s => s.kategori === 'Platform').length, color: 'green' as const },
-    { label: 'Estimasi Biaya', value: formatRupiah(software.reduce((a, c) => a + (c.biayaLayanan || 0), 0)), color: 'blue' as const },
-  ];
+  const counts = {
+    'Semua': software.length,
+    'Platform': software.filter(s => s.kategori === 'Platform').length,
+    'Cloud': software.filter(s => s.kategori === 'Cloud').length,
+  };
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
       <PageHeader 
         title="Platform & Cloud" 
         subtitle="Manajemen Perangkat Lunak Platform dan Layanan Komputasi Awan (Cloud Computing) SPBE." 
-        onAdd={handleAdd} 
+        onAdd={openAddModal} 
         addLabel="Tambah Aset" 
         icon="cloud_segment" 
       />
       
-      <SummaryGrid items={summaryItems} />
+      <MetricPills metrics={[
+        { label: 'Estimasi Biaya', value: formatRupiah(software.reduce((a, c) => a + (c.biayaLayanan || 0), 0)), color: 'blue', icon: 'payments' },
+      ]} />
       
        <FilterTabs 
         tabs={['Semua', 'Platform', 'Cloud']} 
         activeTab={activeFilter} 
         onTabChange={handleTabChange} 
         getLabel={(tab) => tab === 'Platform' ? 'Software Platform' : tab === 'Cloud' ? 'Komputasi Awan' : 'Semua'}
+        counts={counts}
       />
 
       <TableControls 

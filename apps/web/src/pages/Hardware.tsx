@@ -8,7 +8,7 @@ import { Modal } from '../components/ui/Modal';
 // Reusable Components
 import { PageHeader } from '../components/layout/PageHeader';
 import { FilterTabs } from '../components/ui/FilterTabs';
-import { SummaryGrid } from '../components/ui/SummaryGrid';
+import { MetricPills } from '../components/ui/MetricPills';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { ActionButtons } from '../components/ui/ActionButtons';
 import { DetailField } from '../components/ui/DetailField';
@@ -226,29 +226,34 @@ export function Hardware() {
     );
   }
 
-  const summaryItems = [
-    { label: 'Server', value: hardware.filter(h => h.kategori === 'Server').length, color: 'green' as const },
-    { label: 'Jaringan', value: hardware.filter(h => h.kategori === 'Jaringan').length, color: 'yellow' as const },
-    { label: 'Keamanan', value: hardware.filter(h => h.kategori === 'Keamanan').length, color: 'blue' as const },
-    { label: 'Lainnya', value: hardware.filter(h => h.kategori === 'Penyimpanan' || h.kategori === 'Periferal').length, color: 'white' as const },
-  ];
+  const counts = {
+    'Semua': hardware.length,
+    'Server': hardware.filter(h => h.kategori === 'Server').length,
+    'Jaringan': hardware.filter(h => h.kategori === 'Jaringan').length,
+    'Keamanan': hardware.filter(h => h.kategori === 'Keamanan').length,
+    'Penyimpanan': hardware.filter(h => h.kategori === 'Penyimpanan').length,
+    'Periferal': hardware.filter(h => h.kategori === 'Periferal').length,
+  };
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
       <PageHeader 
-        title="Manajemen Hardware"
-        subtitle="Pengelolaan aset fisik infrastruktur TIK (Server, Jaringan, dan Keamanan) dalam ekosistem SPBE."
-        onAdd={handleAdd}
-        addLabel="Tambah Hardware"
-        icon="dns"
+        title="Hardware & Perangkat" 
+        subtitle="Daftar infrastruktur fisik mulai dari server, perangkat jaringan, hingga perangkat periferal."
+        onAdd={openAddModal}
+        addLabel="Tambah Perangkat"
+        icon="computer"
       />
-
-      <SummaryGrid items={summaryItems} />
-
+      
+      <MetricPills metrics={[
+        { label: 'Total Internal Unit', value: hardware.length, color: 'blue', icon: 'inventory_2' }
+      ]} />
+      
       <FilterTabs 
-        tabs={['Semua', 'Server', 'Jaringan', 'Keamanan', 'Penyimpanan', 'Periferal']}
-        activeTab={activeFilter}
-        onTabChange={handleFilterChange}
+        tabs={['Semua', 'Server', 'Jaringan', 'Keamanan', 'Penyimpanan', 'Periferal']} 
+        activeTab={activeFilter} 
+        onTabChange={handleFilterChange} 
+        counts={counts}
       />
 
       <TableControls 

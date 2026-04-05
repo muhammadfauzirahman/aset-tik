@@ -125,6 +125,12 @@ export function SistemIntegrasi() {
     );
   }
 
+  const counts = {
+    'Semua': konektivitas.length,
+    'Jaringan Intra': konektivitas.filter(k => k.kategori === 'Jaringan Intra').length,
+    'SPLP': konektivitas.filter(k => k.kategori === 'SPLP').length,
+  };
+
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
       <PageHeader 
@@ -135,13 +141,12 @@ export function SistemIntegrasi() {
         icon="hub"
       />
 
-      <SummaryGrid items={[
-        { label: 'Jaringan Intra', value: konektivitas.filter(k => k.kategori === 'Jaringan Intra').length, color: 'green' },
-        { label: 'Sistem Penghubung (SPLP)', value: konektivitas.filter(k => k.kategori === 'SPLP').length, color: 'yellow' },
-        { label: 'Total Konektivitas', value: konektivitas.length, color: 'blue' },
-      ]} />
-
-      <FilterTabs activeTab={activeFilter} onTabChange={handleTabChange} tabs={['Semua', 'Jaringan Intra', 'SPLP']} />
+      <FilterTabs 
+        tabs={['Semua', 'Jaringan Intra', 'SPLP']} 
+        activeTab={activeFilter} 
+        onTabChange={handleTabChange} 
+        counts={counts}
+      />
 
       <TableControls 
         searchQuery={searchQuery}
