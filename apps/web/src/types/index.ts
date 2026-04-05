@@ -39,7 +39,7 @@ export interface FasilitasKomputasi {
 }
 
 export type KonektivitasKategori = 'Jaringan Intra' | 'SPLP';
-export type KepemilikanKonektivitas = 'Pusat' | 'BUMN' | 'Pihak Ketiga' | 'Swasta';
+export type KepemilikanKonektivitas = 'Sendiri' | 'Instansi Pemerintah Lain' | 'BUMN' | 'Pihak Ketiga';
 
 export interface Konektivitas {
   id: number;
@@ -50,7 +50,7 @@ export interface Konektivitas {
   pemilik: string;
   statusKepemilikan: KepemilikanKonektivitas;
   jenisJaringan?: string; // 'IP Transit', 'Bandwidth Simetris', etc.
-  bandwidth?: string; // e.g., '10 Gbps'
+  bandwidth?: number; // in Mbps
   tipeMedia?: string; // 'Fiber Optic', 'Wireless', etc.
   mediaLainnya?: string; // e.g., 'Metronet'
   fasilitasId?: number;

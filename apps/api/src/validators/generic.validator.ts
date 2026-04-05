@@ -49,12 +49,12 @@ export const updateLayananDigitalSchema = createLayananDigitalSchema.partial();
 
 // Validator Konektivitas
 export const createKonektivitasSchema = baseAssetSchema.extend({
-  kategori: z.enum(["JARINGAN_INTRA", "SPLP"]),
+  kategori: z.enum(["Jaringan Intra", "SPLP"]),
   namaJaringan: z.string().min(1, "Nama Jaringan wajib diisi."),
   statusKepemilikan: z.string().min(1, "Status Kepemilikan wajib diisi."),
   
   jenisJaringan: z.string().nullable().optional(),
-  bandwidth: z.string().nullable().optional(),
+  bandwidth: z.number().int().nonnegative().nullable().optional(),
   tipeMedia: z.string().nullable().optional(),
 
   fasilitasId: z.number().int().positive().nullable().optional(),

@@ -193,7 +193,7 @@ model Konektivitas {
   
   // Kolom Spesifik
   jenisJaringan     String?  // 'IP Transit', 'Simetris'
-  bandwidth         String?  // '10 Gbps'
+  bandwidth         Int?     // Numerically in Mbps (consistent with Fasilitas)
   tipeMedia         String?  // 'Fiber Optic', 'Wireless'
 
   // Relasi 

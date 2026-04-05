@@ -44,7 +44,7 @@ export function SistemIntegrasi() {
     const cached = localStorage.getItem(CACHE_KEY);
     return cached ? JSON.parse(cached) : {
       kategori: 'Jaringan Intra',
-      statusKepemilikan: 'Pusat',
+      statusKepemilikan: 'Sendiri',
       tipeMedia: 'Fiber Optic'
     };
   });
@@ -63,7 +63,7 @@ export function SistemIntegrasi() {
   const resetForm = () => {
     setFormData({
       kategori: 'Jaringan Intra',
-      statusKepemilikan: 'Pusat',
+      statusKepemilikan: 'Sendiri',
       tipeMedia: 'Fiber Optic'
     });
     clearCache();
@@ -124,6 +124,7 @@ export function SistemIntegrasi() {
       ...formData,
       instansiId: (formData as any).instansiId ? Number((formData as any).instansiId) : undefined,
       fasilitasId: (formData as any).fasilitasId ? Number((formData as any).fasilitasId) : undefined,
+      bandwidth: formData.bandwidth ? Number(formData.bandwidth) : 0,
     } as any;
 
     const options = {
@@ -263,9 +264,11 @@ onClose={closeModals} title={isEditModalOpen ? "Edit Konektivitas" : "Tambah Kon
                 2. Spesifikasi Teknis
               </h4>
               <div className="grid grid-cols-2 gap-4">
-                <Input label="Bandwidth" value={formData.bandwidth || ''} onChange={(e) => setFormData({...formData, bandwidth: e.target.value})} />
-                <Select label="Tipe Media" value={formData.tipeMedia} onChange={(e) => setFormData({...formData, tipeMedia: e.target.value})}
-                  options={['Fiber Optic', 'Radio', 'VSAT', 'UTP', 'Lainnya'].map(v => ({label:v, value:v}))} />
+                <Input label="Jenis Jaringan" value={formData.jenisJaringan || ''} onChange={(e) => setFormData({...formData, jenisJaringan: e.target.value})} />
+                <Input label="Bandwidth (Mbps)" type="number" value={formData.bandwidth?.toString() || ''} onChange={(e) => setFormData({...formData, bandwidth: Number(e.target.value)})} />
+                <Select label="Tipe Media Jaringan" value={formData.tipeMedia} onChange={(e) => setFormData({...formData, tipeMedia: e.target.value})}
+                  options={['Gelombang Radio', 'VSAT', 'Fiber Optic', 'UTP', 'Media Lainnya', 'Belum Ditentukan'].map(v => ({label:v, value:v}))} />
+                <Input label="Media Lainnya" value={formData.mediaLainnya || ''} onChange={(e) => setFormData({...formData, mediaLainnya: e.target.value})} />
               </div>
             </section>
 
@@ -275,8 +278,8 @@ onClose={closeModals} title={isEditModalOpen ? "Edit Konektivitas" : "Tambah Kon
               </h4>
               <div className="grid grid-cols-2 gap-4">
                 <Input label="Nama Pemilik" value={formData.pemilik || ''} onChange={(e) => setFormData({...formData, pemilik: e.target.value})} required />
-                <Select label="Status Kepemilikan" value={formData.statusKepemilikan} onChange={(e) => setFormData({...formData, statusKepemilikan: e.target.value as any})}
-                  options={['Pusat', 'BUMN', 'Swasta', 'Pihak Ketiga'].map(v => ({label:v, value:v}))} required />
+                <Select label="Kepemilikan" value={formData.statusKepemilikan} onChange={(e) => setFormData({...formData, statusKepemilikan: e.target.value as any})}
+                  options={['Sendiri', 'Instansi Pemerintah Lain', 'BUMN', 'Pihak Ketiga'].map(v => ({label:v, value:v}))} required />
               </div>
             </section>
           </fieldset>
@@ -326,8 +329,10 @@ onClose={closeModals} title={isEditModalOpen ? "Edit Konektivitas" : "Tambah Kon
                     Spesifikasi Teknis
                   </h3>
                   <div className="space-y-1 bg-gray-50 p-4 border-2 border-dashed border-black">
+                    <DetailField label="Jenis Jaringan" value={detailItem.jenisJaringan} icon="dns" />
+                    <DetailField label="Bandwidth" value={`${detailItem.bandwidth} Mbps`} icon="speed" />
                     <DetailField label="Media Transmisi" value={detailItem.tipeMedia} icon="settings_input_component" />
-                    <DetailField label="Bandwidth" value={detailItem.bandwidth} icon="speed" />
+                    <DetailField label="Media Lainnya" value={detailItem.mediaLainnya} icon="more_horiz" />
                   </div>
                 </section>
                 {detailItem.kategori === 'SPLP' && (

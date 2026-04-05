@@ -321,10 +321,10 @@ export function FasilitasKomputasiPage() {
                 1. Profil & Klasifikasi
               </h4>
               <div className="grid grid-cols-2 gap-4">
-                <Input label="Kode Fasilitas" value={kode} onChange={(e) => setKode(e.target.value)} required />
                 <Select label="Jenis Fasilitas" value={jenis} onChange={(e) => setJenis(e.target.value as any)}
                   options={[{ label: 'Pusat Data', value: 'Pusat Data' }, { label: 'Pusat Komputasi', value: 'Pusat Komputasi' }, { label: 'Pusat Kendali', value: 'Pusat Kendali' }]}
                 />
+                <Input label="Kode Fasilitas" value={kode} onChange={(e) => setKode(e.target.value)} required />
               </div>
               <Input label="Nama Fasilitas" value={nama} onChange={(e) => setNama(e.target.value)} required />
             </section>
