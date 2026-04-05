@@ -388,7 +388,7 @@ export function Hardware() {
                 )}
                 {kategori === 'Keamanan' && (
                   <Select label="Tipe Security Device" value={tipe} onChange={(e) => setTipe(e.target.value)}
-                    options={['Firewall Hardware', 'WAF', 'IPS/IDS', 'VPN Gateway', 'HSM'].map(v => ({ label: v, value: v }))}
+                    options={['Firewall', 'Intrusion Detection System', 'Intrusion Prevention System', 'Proxy', 'Load Balancer', 'Wireless Intrusion Prevention and Detection System', 'Unified Threat Management', 'Network Access Control'].map(v => ({ label: v, value: v }))}
                   />
                 )}
                 {kategori === 'Penyimpanan' && (

@@ -20,7 +20,7 @@ export function useHardware() {
       queryClient.invalidateQueries({ queryKey: ['hardware'] });
       toast.success('Aset perangkat keras berhasil ditambahkan.');
     },
-    onError: () => toast.error('Gagal menambahkan perangkat keras.')
+    onError: (error: any) => toast.error(error.message || 'Gagal menambahkan perangkat keras.')
   });
 
   const updateMutation = useMutation({
@@ -30,7 +30,7 @@ export function useHardware() {
       queryClient.invalidateQueries({ queryKey: ['hardware'] });
       toast.success('Aset perangkat keras berhasil diperbarui.');
     },
-    onError: () => toast.error('Gagal memperbarui perangkat keras.')
+    onError: (error: any) => toast.error(error.message || 'Gagal memperbarui perangkat keras.')
   });
 
   const deleteMutation = useMutation({
@@ -39,7 +39,7 @@ export function useHardware() {
       queryClient.invalidateQueries({ queryKey: ['hardware'] });
       toast.success('Aset perangkat keras berhasil dihapus.');
     },
-    onError: () => toast.error('Gagal menghapus perangkat keras.')
+    onError: (error: any) => toast.error(error.message || 'Gagal menghapus perangkat keras.')
   });
 
   return {

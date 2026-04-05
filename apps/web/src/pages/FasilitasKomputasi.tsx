@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Card } from '../components/ui/Card';
 import { Table, TableHead, TableHeader, TableBody, TableRow, TableCell } from '../components/ui/Table';
 import { Modal } from '../components/ui/Modal';
-import { Input, Select, Textarea } from '../components/ui/Input';
+import { Input, Select } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 
 // Reusable Components
@@ -353,7 +353,12 @@ export function FasilitasKomputasiPage() {
                 <Input label="Lokasi Fisik / Gedung" value={lokasi} onChange={(e) => setLokasi(e.target.value)} />
                 <Select label="Penanggung Jawab" value={instansiId?.toString()} onChange={(e) => setInstansiId(e.target.value === '' ? '' : Number(e.target.value))} options={instansi.map(i => ({ label: i.namaInstansi, value: i.id.toString() }))} />
               </div>
-              <Textarea label="Sistem Pengamanan" value={pengamanan} onChange={(e) => setPengamanan(e.target.value)} rows={2} />
+              <Select 
+                label="Sistem Pengamanan" 
+                value={pengamanan} 
+                onChange={(e) => setPengamanan(e.target.value)} 
+                options={['Biometrik', 'Non Biometrik'].map(v => ({ label: v, value: v }))}
+              />
               <Select label="Status Operasional" value={status} onChange={(e) => setStatus(e.target.value as any)}
                 options={[{ label: 'Aktif Beroperasi', value: 'Aktif' }, { label: 'Perbaikan', value: 'Perbaikan' }, { label: 'Non-Aktif', value: 'Non-Aktif' }]}
               />

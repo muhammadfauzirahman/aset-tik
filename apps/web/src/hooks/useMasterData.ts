@@ -32,7 +32,7 @@ export function useMasterData() {
       queryClient.invalidateQueries({ queryKey: ['rai'] });
       toast.success('Pusat RAI berhasil ditambahkan.');
     },
-    onError: () => toast.error('Gagal menambahkan RAI.')
+    onError: (error: any) => toast.error(error.message || 'Gagal menambahkan RAI.')
   });
 
   const updateRaiMutation = useMutation({
@@ -41,7 +41,7 @@ export function useMasterData() {
       queryClient.invalidateQueries({ queryKey: ['rai'] });
       toast.success('Pusat RAI berhasil diperbarui.');
     },
-    onError: () => toast.error('Gagal memperbarui RAI.')
+    onError: (error: any) => toast.error(error.message || 'Gagal memperbarui RAI.')
   });
 
   const deleteRaiMutation = useMutation({
@@ -50,7 +50,7 @@ export function useMasterData() {
       queryClient.invalidateQueries({ queryKey: ['rai'] });
       toast.success('Referensi RAI berhasil dihapus.');
     },
-    onError: () => toast.error('Gagal menghapus RAI.')
+    onError: (error: any) => toast.error(error.message || 'Gagal menghapus RAI.')
   });
 
   // Instansi Mutations
@@ -60,7 +60,7 @@ export function useMasterData() {
       queryClient.invalidateQueries({ queryKey: ['instansi'] });
       toast.success('Instansi berhasil ditambahkan.');
     },
-    onError: () => toast.error('Gagal menambahkan instansi.')
+    onError: (error: any) => toast.error(error.message || 'Gagal menambahkan instansi.')
   });
 
   const updateInstansiMutation = useMutation({
@@ -69,7 +69,7 @@ export function useMasterData() {
       queryClient.invalidateQueries({ queryKey: ['instansi'] });
       toast.success('Instansi berhasil diperbarui.');
     },
-    onError: () => toast.error('Gagal memperbarui instansi.')
+    onError: (error: any) => toast.error(error.message || 'Gagal memperbarui instansi.')
   });
 
   const deleteInstansiMutation = useMutation({
@@ -78,7 +78,7 @@ export function useMasterData() {
       queryClient.invalidateQueries({ queryKey: ['instansi'] });
       toast.success('Instansi berhasil dihapus.');
     },
-    onError: () => toast.error('Gagal menghapus instansi.')
+    onError: (error: any) => toast.error(error.message || 'Gagal menghapus instansi.')
   });
 
   // Lokasi Mutations
@@ -88,7 +88,7 @@ export function useMasterData() {
       queryClient.invalidateQueries({ queryKey: ['lokasi'] });
       toast.success('Lokasi berhasil ditambahkan.');
     },
-    onError: () => toast.error('Gagal menambahkan lokasi.')
+    onError: (error: any) => toast.error(error.message || 'Gagal menambahkan lokasi.')
   });
 
   const updateLokasiMutation = useMutation({
@@ -97,7 +97,7 @@ export function useMasterData() {
       queryClient.invalidateQueries({ queryKey: ['lokasi'] });
       toast.success('Lokasi berhasil diperbarui.');
     },
-    onError: () => toast.error('Gagal memperbarui lokasi.')
+    onError: (error: any) => toast.error(error.message || 'Gagal memperbarui lokasi.')
   });
 
   const deleteLokasiMutation = useMutation({
@@ -106,7 +106,7 @@ export function useMasterData() {
       queryClient.invalidateQueries({ queryKey: ['lokasi'] });
       toast.success('Lokasi berhasil dihapus.');
     },
-    onError: () => toast.error('Gagal menghapus lokasi.')
+    onError: (error: any) => toast.error(error.message || 'Gagal menghapus lokasi.')
   });
 
   return {

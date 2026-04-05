@@ -20,7 +20,7 @@ export function useFasilitas() {
       queryClient.invalidateQueries({ queryKey: ['fasilitas-komputasi'] });
       toast.success('Fasilitas komputasi berhasil ditambahkan.');
     },
-    onError: () => toast.error('Gagal menambahkan fasilitas.')
+    onError: (error: any) => toast.error(error.message || 'Gagal menambahkan fasilitas.')
   });
 
   const updateMutation = useMutation({
@@ -30,7 +30,7 @@ export function useFasilitas() {
       queryClient.invalidateQueries({ queryKey: ['fasilitas-komputasi'] });
       toast.success('Fasilitas komputasi berhasil diperbarui.');
     },
-    onError: () => toast.error('Gagal memperbarui fasilitas.')
+    onError: (error: any) => toast.error(error.message || 'Gagal memperbarui fasilitas.')
   });
 
   const deleteMutation = useMutation({
@@ -39,7 +39,7 @@ export function useFasilitas() {
       queryClient.invalidateQueries({ queryKey: ['fasilitas-komputasi'] });
       toast.success('Fasilitas komputasi berhasil dihapus.');
     },
-    onError: () => toast.error('Gagal menghapus fasilitas.')
+    onError: (error: any) => toast.error(error.message || 'Gagal menghapus fasilitas.')
   });
 
   return {

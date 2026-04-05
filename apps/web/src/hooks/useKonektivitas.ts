@@ -20,7 +20,7 @@ export function useKonektivitas() {
       queryClient.invalidateQueries({ queryKey: ['konektivitas'] });
       toast.success('Aset konektivitas berhasil ditambahkan.');
     },
-    onError: () => toast.error('Gagal menambahkan konektivitas.')
+    onError: (error: any) => toast.error(error.message || 'Gagal menambahkan konektivitas.')
   });
 
   const updateMutation = useMutation({
@@ -30,7 +30,7 @@ export function useKonektivitas() {
       queryClient.invalidateQueries({ queryKey: ['konektivitas'] });
       toast.success('Aset konektivitas berhasil diperbarui.');
     },
-    onError: () => toast.error('Gagal memperbarui konektivitas.')
+    onError: (error: any) => toast.error(error.message || 'Gagal memperbarui konektivitas.')
   });
 
   const deleteMutation = useMutation({
@@ -39,7 +39,7 @@ export function useKonektivitas() {
       queryClient.invalidateQueries({ queryKey: ['konektivitas'] });
       toast.success('Aset konektivitas berhasil dihapus.');
     },
-    onError: () => toast.error('Gagal menghapus konektivitas.')
+    onError: (error: any) => toast.error(error.message || 'Gagal menghapus konektivitas.')
   });
 
   return {

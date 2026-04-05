@@ -20,7 +20,7 @@ export function useLayananDigital() {
       queryClient.invalidateQueries({ queryKey: ['layanan-digital'] });
       toast.success('Layanan digital/cloud berhasil ditambahkan.');
     },
-    onError: () => toast.error('Gagal menambahkan layanan digital.')
+    onError: (error: any) => toast.error(error.message || 'Gagal menambahkan layanan digital.')
   });
 
   const updateMutation = useMutation({
@@ -30,7 +30,7 @@ export function useLayananDigital() {
       queryClient.invalidateQueries({ queryKey: ['layanan-digital'] });
       toast.success('Layanan digital/cloud berhasil diperbarui.');
     },
-    onError: () => toast.error('Gagal memperbarui layanan digital.')
+    onError: (error: any) => toast.error(error.message || 'Gagal memperbarui layanan digital.')
   });
 
   const deleteMutation = useMutation({
@@ -39,7 +39,7 @@ export function useLayananDigital() {
       queryClient.invalidateQueries({ queryKey: ['layanan-digital'] });
       toast.success('Layanan digital/cloud berhasil dihapus.');
     },
-    onError: () => toast.error('Gagal menghapus layanan digital.')
+    onError: (error: any) => toast.error(error.message || 'Gagal menghapus layanan digital.')
   });
 
   return {
