@@ -418,7 +418,7 @@ export function Hardware() {
                   options={instansi.map(i => ({ label: i.singkatan, value: i.id.toString() }))} required 
                 />
                 <Select label="Status Kepemilikkan" value={statusKepemilikan} onChange={(e) => setStatusKepemilikan(e.target.value)}
-                  options={(kategori === 'Jaringan' ? ['Sendiri', 'Instansi Pemerintah Lain', 'BUMN', 'Pihak Ketiga'] : ['Sendiri', 'Sewa', 'Hibah', 'BUMN/Pihak Ketiga']).map(v => ({ label: v, value: v }))} required 
+                  options={(['Jaringan', 'Keamanan'].includes(kategori) ? ['Sendiri', 'Instansi Pemerintah Lain', 'BUMN', 'Pihak Ketiga'] : ['Sendiri', 'Sewa', 'Hibah', 'BUMN/Pihak Ketiga']).map(v => ({ label: v, value: v }))} required 
                 />
               </div>
             </section>

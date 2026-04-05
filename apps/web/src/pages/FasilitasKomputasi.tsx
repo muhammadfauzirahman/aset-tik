@@ -408,7 +408,9 @@ export function FasilitasKomputasiPage() {
                     Kapasitas & Keamanan
                   </h3>
                   <div className="space-y-1 bg-gray-50 p-4 border-2 border-dashed border-black">
-                    <DetailField label="Klasifikasi Tier" value={detailItem.klasifikasiTier} icon="layers" />
+                    {(detailItem.jenisFasilitas === 'Pusat Data' || detailItem.jenisFasilitas === 'Pusat Komputasi') && (
+                      <DetailField label="Klasifikasi Tier" value={detailItem.klasifikasiTier || 'Non-Tier'} icon="layers" />
+                    )}
                     <DetailField label="Bandwidth Internet" value={`${detailItem.bandwidthInternet} Mbps`} icon="speed" />
                     <DetailField label="Bandwidth Intranet" value={`${detailItem.bandwidthIntranet} Mbps`} icon="lan" />
                     <DetailField label="Sistem Pengamanan" value={detailItem.sistemPengamanan} icon="security" fullWidth />
