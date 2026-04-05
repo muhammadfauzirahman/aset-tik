@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input, Select, Textarea } from '../components/ui/Input';
@@ -8,7 +8,6 @@ import { Modal } from '../components/ui/Modal';
 // Reusable Components
 import { PageHeader } from '../components/layout/PageHeader';
 import { FilterTabs } from '../components/ui/FilterTabs';
-import { SummaryGrid } from '../components/ui/SummaryGrid';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { ActionButtons } from '../components/ui/ActionButtons';
 import { DetailField } from '../components/ui/DetailField';
@@ -26,7 +25,6 @@ export function SistemIntegrasi() {
   const { 
     konektivitas, 
     isLoading, 
-    error,
     addKonektivitas, 
     updateKonektivitas, 
     deleteKonektivitas,
@@ -37,7 +35,39 @@ export function SistemIntegrasi() {
   const {
     isAddModalOpen, isEditModalOpen, isDetailModalOpen, editingItem, detailItem,
     openAddModal, openEditModal, openDetailModal, closeModals,
-  } = useAssetCRUD<Konektivitas>();
+  } = useAssetCRUD<Konektivitas>('sistem_integrasi');
+
+  // Form State Persistence Key
+  const CACHE_KEY = 'sistem_integrasi_form_cache';
+
+  const [formData, setFormData] = useState<Partial<Konektivitas>>(() => {
+    const cached = localStorage.getItem(CACHE_KEY);
+    return cached ? JSON.parse(cached) : {
+      kategori: 'Jaringan Intra',
+      statusKepemilikan: 'Pusat',
+      tipeMedia: 'Fiber Optic'
+    };
+  });
+
+  // Sync Form to LocalStorage
+  useEffect(() => {
+    if (isAddModalOpen || isEditModalOpen) {
+      localStorage.setItem(CACHE_KEY, JSON.stringify(formData));
+    }
+  }, [formData, isAddModalOpen, isEditModalOpen]);
+
+  const clearCache = useCallback(() => {
+    localStorage.removeItem(CACHE_KEY);
+  }, []);
+
+  const resetForm = () => {
+    setFormData({
+      kategori: 'Jaringan Intra',
+      statusKepemilikan: 'Pusat',
+      tipeMedia: 'Fiber Optic'
+    });
+    clearCache();
+  };
 
   const [activeFilter, setActiveFilter] = useState<'Semua' | KonektivitasKategori>('Semua');
 
@@ -55,13 +85,6 @@ export function SistemIntegrasi() {
     setCurrentPage(1);
     setSearchQuery('');
   };
-
-  // Form State
-  const [formData, setFormData] = useState<Partial<Konektivitas>>({
-    kategori: 'Jaringan Intra',
-    statusKepemilikan: 'Pusat',
-    tipeMedia: 'Fiber Optic'
-  });
 
   // Confirmation Modal State
   const [confirmConfig, setConfirmConfig] = useState<{
@@ -84,46 +107,39 @@ export function SistemIntegrasi() {
 
   const closeConfirm = () => setConfirmConfig(prev => ({ ...prev, isOpen: false, isLoading: false }));
 
-  const handleEdit = (item: Konektivitas) => {
+  const handleAdd = () => {
+    resetForm();
+    openAddModal();
+  };
+
+  const handleEdit = useCallback((item: Konektivitas) => {
     setFormData(item);
     openEditModal(item);
-  };
+  }, [openEditModal]);
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     startSaving();
-    const payload = formData as Omit<Konektivitas, 'id'>;
+    const payload = {
+      ...formData,
+      instansiId: (formData as any).instansiId ? Number((formData as any).instansiId) : undefined,
+      fasilitasId: (formData as any).fasilitasId ? Number((formData as any).fasilitasId) : undefined,
+    } as any;
 
     const options = {
       onSuccess: () => {
+        clearCache();
         notifyMutationFinished(closeModals);
-        setFormData({ kategori: 'Jaringan Intra', statusKepemilikan: 'Pusat', tipeMedia: 'Fiber Optic' });
       },
       onError: resetLoading
     };
 
     if (isEditModalOpen && editingItem) {
-      updateKonektivitas(editingItem.id, payload, options);
+      updateKonektivitas(String(editingItem.id), payload, options);
     } else {
       addKonektivitas(payload, options);
     }
   };
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-[60vh]">
-        <div className="text-2xl font-black uppercase animate-pulse italic">Memuat Data Konektivitas...</div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="p-6 bg-red-100 border-4 border-red-600 text-red-600 font-bold">
-        Gagal memuat data: {(error as any).message}
-      </div>
-    );
-  }
 
   const counts = {
     'Semua': konektivitas.length,
@@ -131,90 +147,102 @@ export function SistemIntegrasi() {
     'SPLP': konektivitas.filter(k => k.kategori === 'SPLP').length,
   };
 
+  const isInitialLoading = isLoading && konektivitas.length === 0;
+
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
       <PageHeader 
         title="Sistem Integrasi" 
         subtitle="Layanan Jaringan Intra Pemerintah dan Sistem Penghubung Layanan Pemerintah (SPLP)."
-        onAdd={openAddModal}
+        onAdd={handleAdd}
         addLabel="Tambah Koneksi"
         icon="hub"
       />
 
-      <FilterTabs 
-        tabs={['Semua', 'Jaringan Intra', 'SPLP']} 
-        activeTab={activeFilter} 
-        onTabChange={handleTabChange} 
-        counts={counts}
-      />
+      {isInitialLoading ? (
+        <div className="flex items-center justify-center h-[50vh] bg-white border-4 border-black shadow-[8px_8px_0px_0px_#1A1A1A]">
+          <div className="text-2xl font-black uppercase animate-pulse italic">Memuat Data Konektivitas...</div>
+        </div>
+      ) : (
+        <>
+          <FilterTabs 
+            tabs={['Semua', 'Jaringan Intra', 'SPLP']} 
+            activeTab={activeFilter} 
+            onTabChange={handleTabChange} 
+            counts={counts}
+          />
 
-      <TableControls 
-        searchQuery={searchQuery}
-        onSearch={setSearchQuery}
-        pageSize={pageSize}
-        onPageSizeChange={setPageSize}
-        onExport={() => exportToCSV(`konektivitas-${activeFilter.toLowerCase()}.csv`)}
-      />
+          <TableControls 
+            searchQuery={searchQuery}
+            onSearch={setSearchQuery}
+            pageSize={pageSize}
+            onPageSizeChange={setPageSize}
+            onExport={() => exportToCSV(`konektivitas-${activeFilter.toLowerCase()}.csv`)}
+          />
 
-      <Card className="shadow-[8px_8px_0px_0px_#1A1A1A] overflow-hidden">
-        <Table>
-          <TableHead>
-            <TableHeader sortKey="kodeAset" onSort={requestSort} activeSortConfig={sortConfig}>Kode & Kategori</TableHeader>
-            <TableHeader sortKey="namaJaringan" onSort={requestSort} activeSortConfig={sortConfig}>Layanan / Jaringan</TableHeader>
-            <TableHeader sortKey="pemilik" onSort={requestSort} activeSortConfig={sortConfig}>Pemilik</TableHeader>
-            <TableHeader className="text-right">Aksi</TableHeader>
-          </TableHead>
-          <TableBody>
-            {paginatedData.map((k: Konektivitas) => (
-              <TableRow key={k.id}>
-                <TableCell className="w-48">
-                  <div className="font-mono-bold text-sm mb-1">{k.kodeAset}</div>
-                  <StatusBadge status={k.kategori} />
-                </TableCell>
-                <TableCell>
-                  <div className="font-bold text-[#1A1A1A]">{k.namaJaringan}</div>
-                  <div className="text-xs opacity-70 mt-1 max-w-xs truncate">{k.deskripsi}</div>
-                </TableCell>
-                <TableCell><div className="font-bold text-sm">{k.pemilik}</div></TableCell>
-                <TableCell className="text-right">
-                  <ActionButtons 
-                    onDetail={() => openDetailModal(k)}
-                    onEdit={() => handleEdit(k)}
-                    onDelete={() => triggerConfirm(
-                      'Hapus Konektivitas?',
-                      `Apakah Anda yakin ingin menghapus "${k.namaJaringan}"? Koneksi ini mungkin digunakan oleh layanan cloud atau infrastruktur lain.`,
-                      () => {
-                        setConfirmConfig(prev => ({ ...prev, isLoading: true }));
-                        deleteKonektivitas(k.id, { 
-                          onSuccess: closeConfirm,
-                          onError: () => setConfirmConfig(prev => ({ ...prev, isLoading: false }))
-                        });
-                      }
-                    )}
-                  />
-                </TableCell>
-              </TableRow>
-            ))}
-            {paginatedData.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={4} className="text-center py-12">
-                  <div className="flex flex-col items-center opacity-40">
-                    <span className="material-symbols-outlined text-4xl mb-2">search_off</span>
-                    <p className="font-mono text-sm uppercase italic">Data tidak ditemukan</p>
-                  </div>
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-        <Pagination 
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={setCurrentPage}
-        />
-      </Card>
+          <Card className="shadow-[8px_8px_0px_0px_#1A1A1A] overflow-hidden">
+            <Table>
+              <TableHead>
+                <TableHeader sortKey="kodeAset" onSort={requestSort} activeSortConfig={sortConfig}>Kode & Kategori</TableHeader>
+                <TableHeader sortKey="namaJaringan" onSort={requestSort} activeSortConfig={sortConfig}>Layanan / Jaringan</TableHeader>
+                <TableHeader sortKey="pemilik" onSort={requestSort} activeSortConfig={sortConfig}>Pemilik</TableHeader>
+                <TableHeader className="text-right">Aksi</TableHeader>
+              </TableHead>
+              <TableBody>
+                {paginatedData.map((s: Konektivitas) => (
+                  <TableRow key={s.id}>
+                    <TableCell className="w-48">
+                      <div className="font-mono-bold text-sm mb-1">{s.kodeAset}</div>
+                      <StatusBadge status={s.kategori} />
+                    </TableCell>
+                    <TableCell>
+                      <div className="font-bold text-[#1A1A1A]">{s.namaJaringan}</div>
+                      <div className="text-xs opacity-70 mt-1 max-w-xs truncate">{s.deskripsi}</div>
+                    </TableCell>
+                    <TableCell><div className="font-bold text-sm">{s.pemilik}</div></TableCell>
+                    <TableCell className="text-right">
+                      <ActionButtons 
+                        onDetail={() => openDetailModal(s)}
+                        onEdit={() => handleEdit(s)}
+                        onDelete={() => triggerConfirm(
+                          'Hapus Sistem?',
+                          `Apakah Anda yakin ingin menghapus "${s.namaJaringan}"? Tindakan ini tidak dapat dibatalkan.`,
+                          () => {
+                            setConfirmConfig(prev => ({ ...prev, isLoading: true }));
+                            deleteKonektivitas(String(s.id), { 
+                              onSuccess: closeConfirm,
+                              onError: () => setConfirmConfig(prev => ({ ...prev, isLoading: false }))
+                            });
+                          }
+                        )}
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {paginatedData.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center py-12">
+                      <div className="flex flex-col items-center opacity-40">
+                        <span className="material-symbols-outlined text-4xl mb-2">search_off</span>
+                        <p className="font-mono text-sm uppercase italic">Data tidak ditemukan</p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+            <Pagination 
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
+          </Card>
+        </>
+      )}
 
-      <Modal isOpen={isAddModalOpen || isEditModalOpen} onClose={closeModals} title={isEditModalOpen ? "Edit Konektivitas" : "Tambah Konektivitas"} size="lg">
+      {/* MODALS OUTSIDE FOR PERSISTENCE */}
+      <Modal isOpen={isAddModalOpen || isEditModalOpen} 
+onClose={closeModals} title={isEditModalOpen ? "Edit Konektivitas" : "Tambah Konektivitas"} size="lg">
         <form onSubmit={handleSave} className="space-y-6 px-1 pb-4">
           <fieldset disabled={isSaving}>
             <section className="space-y-4">
@@ -230,7 +258,7 @@ export function SistemIntegrasi() {
               <Textarea label="Deskripsi" value={formData.deskripsi || ''} onChange={(e) => setFormData({...formData, deskripsi: e.target.value})} rows={3} />
             </section>
 
-            <section className="space-y-4 p-4 bg-gray-50 border-2 border-black border-dashed">
+            <section className="space-y-4 p-4 bg-gray-50 border-2 border-black border-dashed mt-10">
               <h4 className="text-xs font-mono-bold uppercase bg-[#FFD700] border-2 border-black px-2 py-1 inline-block shadow-[2px_2px_0_0_#000]">
                 2. Spesifikasi Teknis
               </h4>
@@ -241,7 +269,7 @@ export function SistemIntegrasi() {
               </div>
             </section>
 
-            <section className="space-y-4">
+            <section className="space-y-4 mt-10">
               <h4 className="text-xs font-mono-bold uppercase bg-[#00E5FF] border-2 border-black px-2 py-1 inline-block shadow-[2px_2px_0_0_#000]">
                 3. Pengelola & Status
               </h4>

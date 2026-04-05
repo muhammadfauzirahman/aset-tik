@@ -34,8 +34,8 @@ export function PlatformCloud() {
     isLoading: isSoftwareLoading,
     error: softwareError,
     addLayananDigital: addSoftware, 
-    updateLayananDigital: updateSoftware, 
-    deleteLayananDigital: deleteSoftware,
+    updateLayananDigital: updateCloud, 
+    deleteLayananDigital: deleteCloud,
   } = useLayananDigital();
 
   const { isSaving, progress, startSaving, notifyMutationFinished, reset: resetLoading } = useLoadingProgress();
@@ -75,14 +75,14 @@ export function PlatformCloud() {
   const [jenisDatabase, setJenisDatabase] = useState('');
   const [jenisUtilitas, setJenisUtilitas] = useState('');
   const [jenisOS, setJenisOS] = useState('');
-  const [fasilitasId, setFasilitasId] = useState('');
-  const [instansiId, setInstansiId] = useState('');
-  const [hardwareServerId, setHardwareServerId] = useState('');
-  const [cloudDependencyId, setCloudDependencyId] = useState('');
+  const [fasilitasId, setFasilitasId] = useState<number | ''>('');
+  const [instansiId, setInstansiId] = useState<number | ''>('');
+  const [hardwareServerId, setHardwareServerId] = useState<number | ''>('');
+  const [cloudDependencyId, setCloudDependencyId] = useState<number | ''>('');
   const [aplikasiDependency, setAplikasiDependency] = useState('');
   const [dataInfoDependency, setDataInfoDependency] = useState('');
-  const [splpDependency, setSplpDependency] = useState('');
-  const [jaringanDependency, setJaringanDependency] = useState('');
+  const [splpDependency, setSplpDependency] = useState<number | ''>('');
+  const [jaringanDependency, setJaringanDependency] = useState<number | ''>('');
   const [unitOpsCloud, setUnitOpsCloud] = useState('');
   const [edukasiKeamanan, setEdukasiKeamanan] = useState('');
 
@@ -123,7 +123,7 @@ export function PlatformCloud() {
   const {
     isAddModalOpen, isEditModalOpen, isDetailModalOpen, editingItem, detailItem,
     openAddModal, openEditModal, openDetailModal, closeModals
-  } = useAssetCRUD<LayananDigital>();
+  } = useAssetCRUD<LayananDigital>('platform_cloud');
 
   const handleAdd = () => { resetForm(); openAddModal(); };
 
@@ -133,10 +133,10 @@ export function PlatformCloud() {
     setTipeCloud(item.tipeCloud || 'SaaS'); setJenisLisensi(item.jenisLisensi || '');
     setTipeSoftware(item.tipeSoftware || 'Sistem Operasi');
     setJenisDatabase(item.jenisDatabase || ''); setJenisUtilitas(item.jenisUtilitas || ''); setJenisOS(item.jenisOS || '');
-    setFasilitasId(item.fasilitasId || ''); setInstansiId(item.instansiId || ''); setHardwareServerId(item.hardwareServerId || '');
-    setCloudDependencyId(item.cloudDependencyId || ''); setAplikasiDependency(item.aplikasiDependency || '');
-    setDataInfoDependency(item.dataInfoDependency || ''); setSplpDependency(item.splpDependency || '');
-    setJaringanDependency(item.jaringanDependency || '');
+    setInstansiId(item.instansiId ?? ''); setHardwareServerId(item.hardwareServerId ?? '');
+    setCloudDependencyId(item.cloudDependencyId ?? ''); setAplikasiDependency(item.aplikasiDependency || '');
+    setDataInfoDependency(item.dataInfoDependency || ''); setSplpDependency(item.splpDependency ?? '');
+    setJaringanDependency(item.jaringanDependency ?? '');
     setUnitOpsCloud(item.unitOperasionalCloud || '');
     setEdukasiKeamanan(item.edukasiKeamananDependency || '');
     
@@ -155,27 +155,21 @@ export function PlatformCloud() {
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     startSaving();
-    const finalValidity = isPermanen ? 'Seumur Hidup' : (tanggalBerakhir ? tanggalBerakhir : 'Periodik');
 
     const payload: Omit<LayananDigital, 'id'> = {
       kategori, kodeAset: kode, namaLayanan: nama, deskripsi, pemilik, pengelola: instansi.find(i => i.id === instansiId)?.namaInstansi || 'Unknown',
-      instansiId, statusKepemilikan, biayaLayanan: kategori === 'Cloud' ? biaya : undefined,
-      jangkaWaktu: kategori === 'Cloud' ? finalValidity : undefined, tipeCloud: kategori === 'Cloud' ? tipeCloud : undefined,
-      jenisLisensi: kategori === 'Platform' ? jenisLisensi : undefined, validitasLisensi: kategori === 'Platform' ? finalValidity : undefined,
-      tipeSoftware: kategori === 'Platform' ? tipeSoftware : undefined,
-      jenisDatabase: (kategori === 'Platform' && tipeSoftware === 'Sistem Database') ? jenisDatabase : undefined,
-      jenisUtilitas: (kategori === 'Platform' && tipeSoftware === 'Sistem Utilitas') ? jenisUtilitas : undefined,
       jenisOS: (kategori === 'Platform' && tipeSoftware === 'Sistem Operasi') ? jenisOS : undefined,
       unitPengembangCloud: kategori === 'Cloud' ? instansi.find(i => i.id === instansiId)?.namaInstansi : undefined,
       unitOperasionalCloud: kategori === 'Cloud' ? unitOpsCloud : undefined,
       edukasiKeamananDependency: kategori === 'Cloud' ? edukasiKeamanan : undefined,
-      fasilitasId,
-      hardwareServerId: kategori === 'Platform' ? hardwareServerId : undefined,
-      cloudDependencyId: kategori === 'Platform' ? cloudDependencyId : undefined,
+      instansiId: instansiId ? Number(instansiId) : undefined,
+      fasilitasId: fasilitasId ? Number(fasilitasId) : undefined,
+      hardwareServerId: kategori === 'Platform' ? (hardwareServerId ? Number(hardwareServerId) : undefined) : undefined,
+      cloudDependencyId: kategori === 'Platform' ? (cloudDependencyId ? Number(cloudDependencyId) : undefined) : undefined,
       aplikasiDependency: kategori === 'Cloud' ? aplikasiDependency : undefined,
       dataInfoDependency: kategori === 'Cloud' ? dataInfoDependency : undefined,
-      splpDependency: kategori === 'Cloud' ? splpDependency : undefined,
-      jaringanDependency: kategori === 'Cloud' ? jaringanDependency : undefined,
+      splpDependency: kategori === 'Cloud' ? (splpDependency ? Number(splpDependency) : undefined) : undefined,
+      jaringanDependency: kategori === 'Cloud' ? (jaringanDependency ? Number(jaringanDependency) : undefined) : undefined,
     };
 
     const options = {
@@ -184,27 +178,13 @@ export function PlatformCloud() {
     };
 
     if (isEditModalOpen && editingItem) {
-      updateSoftware(editingItem.id, payload, options);
+      updateCloud(Number(editingItem.id), payload, options);
     } else {
       addSoftware(payload, options);
     }
   };
 
-  if (isSoftwareLoading || isMasterLoading) {
-    return (
-      <div className="flex items-center justify-center h-[60vh]">
-        <div className="text-2xl font-black uppercase animate-pulse italic">Memuat Data Platform & Cloud...</div>
-      </div>
-    );
-  }
-
-  if (softwareError) {
-    return (
-      <div className="p-6 bg-red-100 border-4 border-red-600 text-red-600 font-bold">
-        Gagal memuat data: {(softwareError as any).message}
-      </div>
-    );
-  }
+  const isInitialLoading = (isSoftwareLoading || isMasterLoading) && software.length === 0;
 
   const counts = {
     'Semua': software.length,
@@ -217,89 +197,98 @@ export function PlatformCloud() {
       <PageHeader 
         title="Platform & Cloud" 
         subtitle="Manajemen Perangkat Lunak Platform dan Layanan Komputasi Awan (Cloud Computing) SPBE." 
-        onAdd={openAddModal} 
+        onAdd={handleAdd} 
         addLabel="Tambah Aset" 
         icon="cloud_segment" 
       />
-      
-      <MetricPills metrics={[
-        { label: 'Estimasi Biaya', value: formatRupiah(software.reduce((a, c) => a + (c.biayaLayanan || 0), 0)), color: 'blue', icon: 'payments' },
-      ]} />
-      
-       <FilterTabs 
-        tabs={['Semua', 'Platform', 'Cloud']} 
-        activeTab={activeFilter} 
-        onTabChange={handleTabChange} 
-        getLabel={(tab) => tab === 'Platform' ? 'Software Platform' : tab === 'Cloud' ? 'Komputasi Awan' : 'Semua'}
-        counts={counts}
-      />
 
-      <TableControls 
-        searchQuery={searchQuery}
-        onSearch={setSearchQuery}
-        pageSize={pageSize}
-        onPageSizeChange={setPageSize}
-        onExport={() => exportToCSV(`platform-cloud-${activeFilter.toLowerCase()}.csv`)}
-      />
+      {isInitialLoading ? (
+        <div className="flex items-center justify-center h-[50vh] bg-white border-4 border-black shadow-[8px_8px_0px_0px_#1A1A1A]">
+          <div className="text-2xl font-black uppercase animate-pulse italic">Memuat Data Platform & Cloud...</div>
+        </div>
+      ) : (
+        <>
+          <MetricPills metrics={[
+            { label: 'Estimasi Biaya', value: formatRupiah(software.reduce((a, c) => a + (c.biayaLayanan || 0), 0)), color: 'blue', icon: 'payments' },
+          ]} />
+          
+          <FilterTabs 
+            tabs={['Semua', 'Platform', 'Cloud']} 
+            activeTab={activeFilter} 
+            onTabChange={handleTabChange} 
+            getLabel={(tab) => tab === 'Platform' ? 'Software Platform' : tab === 'Cloud' ? 'Komputasi Awan' : 'Semua'}
+            counts={counts}
+          />
 
-      <Card className="shadow-[8px_8px_0px_0px_#1A1A1A] overflow-hidden">
-        <Table>
-          <TableHead>
-            <TableHeader sortKey="namaLayanan" onSort={requestSort} activeSortConfig={sortConfig}>Layanan & Kode</TableHeader>
-            <TableHeader sortKey="kategori" onSort={requestSort} activeSortConfig={sortConfig}>Kategori</TableHeader>
-            <TableHeader sortKey="pemilik" onSort={requestSort} activeSortConfig={sortConfig}>Pemilik / Pengelola</TableHeader>
-            <TableHeader className="text-right">Aksi</TableHeader>
-          </TableHead>
-          <TableBody>
-            {paginatedData.map((s: LayananDigital) => (
-              <TableRow key={s.id}>
-                <TableCell>
-                  <div className="font-mono-bold text-[10px] opacity-60 uppercase">{s.kodeAset}</div>
-                  <div className="font-bold text-sm">{s.namaLayanan}</div>
-                </TableCell>
-                <TableCell><StatusBadge status={s.kategori} /></TableCell>
-                <TableCell>
-                  <div className="text-xs font-bold uppercase tracking-tight">{s.pemilik}</div>
-                </TableCell>
-                <TableCell className="text-right">
-                  <ActionButtons 
-                    onDetail={() => openDetailModal(s)}
-                    onEdit={() => handleEdit(s)}
-                    onDelete={() => triggerConfirm(
-                      'Hapus Aset Digital?',
-                      `Apakah Anda yakin ingin menghapus "${s.namaLayanan}"? Data pendukung atau aplikasi yang bergantung mungkin akan terganggu.`,
-                      () => {
-                        setConfirmConfig(prev => ({ ...prev, isLoading: true }));
-                        deleteSoftware(s.id, { 
-                          onSuccess: closeConfirm,
-                          onError: () => setConfirmConfig(prev => ({ ...prev, isLoading: false }))
-                        });
-                      }
-                    )}
-                  />
-                </TableCell>
-              </TableRow>
-            ))}
-            {paginatedData.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={4} className="text-center py-12">
-                  <div className="flex flex-col items-center opacity-40">
-                    <span className="material-symbols-outlined text-4xl mb-2">search_off</span>
-                    <p className="font-mono text-sm uppercase italic">Data tidak ditemukan</p>
-                  </div>
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-        <Pagination 
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={setCurrentPage}
-        />
-      </Card>
+          <TableControls 
+            searchQuery={searchQuery}
+            onSearch={setSearchQuery}
+            pageSize={pageSize}
+            onPageSizeChange={setPageSize}
+            onExport={() => exportToCSV(`platform-cloud-${activeFilter.toLowerCase()}.csv`)}
+          />
 
-      <Modal isOpen={isAddModalOpen || isEditModalOpen} onClose={closeModals} title={isEditModalOpen ? "Edit Aset Digital" : "Tambah Aset Digital"} size="lg" closeOnOverlayClick={false}>
+          <Card className="shadow-[8px_8px_0px_0px_#1A1A1A] overflow-hidden">
+            <Table>
+              <TableHead>
+                <TableHeader sortKey="namaLayanan" onSort={requestSort} activeSortConfig={sortConfig}>Layanan & Kode</TableHeader>
+                <TableHeader sortKey="kategori" onSort={requestSort} activeSortConfig={sortConfig}>Kategori</TableHeader>
+                <TableHeader sortKey="pemilik" onSort={requestSort} activeSortConfig={sortConfig}>Pemilik / Pengelola</TableHeader>
+                <TableHeader className="text-right">Aksi</TableHeader>
+              </TableHead>
+              <TableBody>
+                {paginatedData.map((s: LayananDigital) => (
+                  <TableRow key={s.id}>
+                    <TableCell>
+                      <div className="font-mono-bold text-[10px] opacity-60 uppercase">{s.kodeAset}</div>
+                      <div className="font-bold text-sm">{s.namaLayanan}</div>
+                    </TableCell>
+                    <TableCell><StatusBadge status={s.kategori} /></TableCell>
+                    <TableCell>
+                      <div className="text-xs font-bold uppercase tracking-tight">{s.pemilik}</div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <ActionButtons 
+                        onDetail={() => openDetailModal(s)}
+                        onEdit={() => handleEdit(s)}
+                        onDelete={() => triggerConfirm(
+                          'Hapus Platform?',
+                          `Apakah Anda yakin ingin menghapus "${s.namaLayanan}"? Tindakan ini tidak dapat dibatalkan.`,
+                          () => {
+                            setConfirmConfig(prev => ({ ...prev, isLoading: true }));
+                            deleteCloud(Number(s.id), { 
+                              onSuccess: closeConfirm,
+                              onError: () => setConfirmConfig(prev => ({ ...prev, isLoading: false }))
+                            });
+                          }
+                        )}
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {paginatedData.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center py-12">
+                      <div className="flex flex-col items-center opacity-40">
+                        <span className="material-symbols-outlined text-4xl mb-2">search_off</span>
+                        <p className="font-mono text-sm uppercase italic">Data tidak ditemukan</p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+            <Pagination 
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
+          </Card>
+        </>
+      )}
+
+      {/* MODALS ARE OUTSIDE THE CONDITIONAL CONTENT TO PERSIST STATE */}
+      <Modal isOpen={isAddModalOpen || isEditModalOpen} onClose={closeModals} title={isEditModalOpen ? "Edit Aset Digital" : "Tambah Aset Digital"} size="lg">
         <form onSubmit={handleSave} className="space-y-6 px-1 pb-4">
           <fieldset disabled={isSaving}>
             <section className="space-y-4">
@@ -375,7 +364,7 @@ export function PlatformCloud() {
                 <Select label="Status Kepemilikkan" value={statusKepemilikan} onChange={(e) => setStatusKepemilikan(e.target.value)}
                   options={['Sendiri', 'Instansi Pemerintah Lain', 'BUMN', 'Swasta Dalam Negeri', 'Swasta Luar Negeri'].map(v => ({ label: v, value: v }))}
                 />
-                <Select label={kategori === 'Cloud' ? "Unit Pengembang Government Cloud" : "Unit Pengelola"} value={instansiId} onChange={(e) => setInstansiId(e.target.value)} options={instansi.map(i => ({ label: i.namaInstansi, value: i.id }))} />
+                <Select label={kategori === 'Cloud' ? "Unit Pengembang Government Cloud" : "Unit Pengelola"} value={instansiId} onChange={(e) => setInstansiId(Number(e.target.value))} options={instansi.map(i => ({ label: i.namaInstansi, value: i.id }))} />
                 {kategori === 'Cloud' && (
                   <>
                     <Select label="→ Unit Operasional (Dependency)" value={unitOpsCloud} onChange={(e) => setUnitOpsCloud(e.target.value)} options={instansi.map(i => ({ label: i.namaInstansi, value: i.namaInstansi }))} />
@@ -390,25 +379,28 @@ export function PlatformCloud() {
                 4. Relasi Dependensi Arsitektur
               </h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Select label={kategori === 'Cloud' ? "← Fasilitas Komputasi (Dependency)" : "→ Fasilitas Komputasi (Dependency)"} value={fasilitasId} onChange={(e) => setFasilitasId(e.target.value)}
-                  options={[{label: 'Pilih Fasilitas', value: ''}, ...hardware.filter(h => h.kategori === 'Server').map(h => ({ label: h.namaPerangkat, value: h.id }))]} 
-                />
-                {kategori === 'Platform' && (
-                  <Select label="→ Komputasi Awan (Dependency)" value={cloudDependencyId} onChange={(e) => setCloudDependencyId(e.target.value)}
-                    options={[{label: 'None / On-Premise', value: ''}, ...software.filter(s => s.kategori === 'Cloud').map(s => ({ label: s.namaLayanan, value: s.id }))]}
-                  />
-                )}
                 {kategori === 'Cloud' && (
                   <>
+                    <Select label="→ Fasilitas Data Center (Dependency)" value={fasilitasId?.toString()} onChange={(e) => setFasilitasId(e.target.value === '' ? '' : Number(e.target.value))}
+                      options={[{label: 'Pilih Fasilitas', value: ''}, ...hardware.filter(h => h.kategori === 'Server').map(h => ({ label: h.namaPerangkat, value: h.id.toString() }))]} 
+                    />
+                    <Select label="→ Node/Host Server (Dependency)" value={hardwareServerId?.toString()} onChange={(e) => setHardwareServerId(e.target.value === '' ? '' : Number(e.target.value))}
+                      options={[{label: 'Pilih Server', value: ''}, ...hardware.filter(h => h.kategori === 'Server').map(h => ({ label: h.namaPerangkat, value: h.id.toString() }))]} 
+                    />
                     <Input label="← Aplikasi (Dependency)" value={aplikasiDependency} onChange={(e) => setAplikasiDependency(e.target.value)} />
                     <Input label="← Data dan Informasi (Dependency)" value={dataInfoDependency} onChange={(e) => setDataInfoDependency(e.target.value)} />
-                    <Select label="→ Sistem Penghubung Layanan (Dependency)" value={splpDependency} onChange={(e) => setSplpDependency(e.target.value)}
-                      options={[{label:'None', value:''}, ...konektivitas.filter(k => k.kategori === 'SPLP').map(k => ({label: k.namaJaringan, value: k.id}))]}
+                    <Select label="→ Sistem Penghubung Layanan (Dependency)" value={splpDependency?.toString()} onChange={(e) => setSplpDependency(e.target.value === '' ? '' : Number(e.target.value))}
+                      options={[{label:'None', value:''}, ...konektivitas.filter(k => k.kategori === 'SPLP').map(k => ({label: k.namaJaringan, value: k.id.toString()}))]}
                     />
-                     <Select label="→ Jaringan Intra Pemerintah (Dependency)" value={jaringanDependency} onChange={(e) => setJaringanDependency(e.target.value)}
-                      options={[{label:'None', value:''}, ...konektivitas.filter(k => k.kategori === 'Jaringan Intra').map(k => ({label: k.namaJaringan, value: k.id}))]}
+                     <Select label="→ Jaringan Intra Pemerintah (Dependency)" value={jaringanDependency?.toString()} onChange={(e) => setJaringanDependency(e.target.value === '' ? '' : Number(e.target.value))}
+                      options={[{label:'None', value:''}, ...konektivitas.filter(k => k.kategori === 'Jaringan Intra').map(k => ({label: k.namaJaringan, value: k.id.toString()}))]}
                     />
                   </>
+                )}
+                {kategori === 'Platform' && (
+                  <Select label="→ Komputasi Awan (Dependency)" value={cloudDependencyId?.toString()} onChange={(e) => setCloudDependencyId(e.target.value === '' ? '' : Number(e.target.value))}
+                    options={[{label: 'None / On-Premise', value: ''}, ...software.filter(s => s.kategori === 'Cloud').map(s => ({ label: s.namaLayanan, value: s.id.toString() }))]}
+                  />
                 )}
               </div>
             </section>
@@ -502,8 +494,8 @@ export function PlatformCloud() {
                       <>
                         <DetailField label="Aplikasi" value={detailItem.aplikasiDependency} icon="apps" />
                         <DetailField label="Data dan Informasi" value={detailItem.dataInfoDependency} icon="storage" />
-                        <DetailField label="Sistem Penghubung (SPLP)" value={konektivitas.find(k => k.id === detailItem.splpDependency)?.namaJaringan || 'N/A'} icon="hub" />
-                        <DetailField label="Jaringan Intra" value={konektivitas.find(k => k.id === detailItem.jaringanDependency)?.namaJaringan || 'N/A'} icon="network_ping" />
+                        <DetailField label="Sistem Penghubung (SPLP)" value={konektivitas.find(k => k.id === (detailItem.splpDependency as any as number))?.namaJaringan || 'N/A'} icon="hub" />
+                        <DetailField label="Jaringan Intra" value={konektivitas.find(k => k.id === (detailItem.jaringanDependency as any as number))?.namaJaringan || 'N/A'} icon="network_ping" />
                       </>
                     )}
                   </div>

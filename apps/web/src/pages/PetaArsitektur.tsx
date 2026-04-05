@@ -57,7 +57,7 @@ export function PetaArsitektur() {
   const { upstreamNodes, centerNode, downstreamNodes } = useMemo(() => {
     if (!selectedId) return { upstreamNodes: [] as MapNode[], centerNode: null as MapNode | null, downstreamNodes: [] as MapNode[] };
 
-    const center = allAssets.find(a => a.id === selectedId);
+    const center = allAssets.find(a => String(a.id) === String(selectedId));
     if (!center) return { upstreamNodes: [] as MapNode[], centerNode: null as MapNode | null, downstreamNodes: [] as MapNode[] };
 
     const cNode: MapNode = {
@@ -68,20 +68,20 @@ export function PetaArsitektur() {
     const upstream: MapNode[] = [];
     const downstream: MapNode[] = [];
 
-    const centerHw = hardware.find(h => h.id === selectedId);
-    const centerSw = software.find(s => s.id === selectedId);
+    const centerHw = hardware.find(h => String(h.id) === String(selectedId));
+    const centerSw = software.find(s => String(s.id) === String(selectedId));
 
     // TIER 1 — Upstream: Fasilitas
     const fasId = centerHw?.fasilitasId || centerSw?.fasilitasId;
     if (fasId) {
-      const fas = fasilitas.find(f => f.id === fasId);
-      if (fas) upstream.push({ id: fas.id, label: fas.namaFasilitas, type: 'Fasilitas (Host)', icon: 'domain', tier: 'upstream', color: 'bg-[#00E5FF]' });
+      const fas = fasilitas.find(f => String(f.id) === String(fasId));
+      if (fas) upstream.push({ id: String(fas.id), label: fas.namaFasilitas, type: 'Fasilitas (Host)', icon: 'domain', tier: 'upstream', color: 'bg-[#00E5FF]' });
     }
 
     // Upstream: Cloud dependency (for Platform software)
     if (centerSw?.cloudDependencyId) {
-      const cld = software.find(s => s.id === centerSw.cloudDependencyId);
-      if (cld) upstream.push({ id: cld.id, label: cld.namaLayanan, type: 'Cloud Provider', icon: 'cloud', tier: 'upstream', color: 'bg-[#A8FF00]' });
+      const cld = software.find(s => String(s.id) === String(centerSw.cloudDependencyId));
+      if (cld) upstream.push({ id: String(cld.id), label: cld.namaLayanan, type: 'Cloud Provider', icon: 'cloud', tier: 'upstream', color: 'bg-[#A8FF00]' });
     }
 
     // Upstream: Network device (for hardware)
@@ -92,17 +92,17 @@ export function PetaArsitektur() {
 
     // TIER 3 — Downstream: Software that depends on this
     software.forEach(s => {
-      if (s.id === selectedId) return;
-      if (s.cloudDependencyId === selectedId || s.hardwareServerId === selectedId) {
-        downstream.push({ id: s.id, label: s.namaLayanan, type: 'Software Layer', icon: 'apps', tier: 'downstream', color: 'bg-[#FF5252] text-white' });
+      if (String(s.id) === String(selectedId)) return;
+      if (String(s.cloudDependencyId) === String(selectedId) || String(s.hardwareServerId) === String(selectedId)) {
+        downstream.push({ id: String(s.id), label: s.namaLayanan, type: 'Software Layer', icon: 'apps', tier: 'downstream', color: 'bg-[#FF5252] text-white' });
       }
     });
 
     // Downstream: Hardware that depends on this (as network switch)
     hardware.forEach(h => {
-      if (h.id === selectedId) return;
-      if (h.perangkatJaringanId === selectedId) {
-        downstream.push({ id: h.id, label: h.namaPerangkat, type: 'HW Dependent', icon: 'settings_input_hdmi', tier: 'downstream', color: 'bg-white' });
+      if (String(h.id) === String(selectedId)) return;
+      if (String(h.perangkatJaringanId) === String(selectedId)) {
+        downstream.push({ id: String(h.id), label: h.namaPerangkat, type: 'HW Dependent', icon: 'settings_input_hdmi', tier: 'downstream', color: 'bg-white' });
       }
     });
 

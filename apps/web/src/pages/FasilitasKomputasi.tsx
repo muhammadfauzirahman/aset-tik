@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Card } from '../components/ui/Card';
 import { Table, TableHead, TableHeader, TableBody, TableRow, TableCell } from '../components/ui/Table';
 import { Modal } from '../components/ui/Modal';
@@ -9,7 +9,6 @@ import { Button } from '../components/ui/Button';
 import { PageHeader } from '../components/layout/PageHeader';
 import { FilterTabs } from '../components/ui/FilterTabs';
 import { MetricPills } from '../components/ui/MetricPills';
-import { SummaryGrid } from '../components/ui/SummaryGrid'; // Might still be used elsewhere or just remove
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { ActionButtons } from '../components/ui/ActionButtons';
 import { DetailField } from '../components/ui/DetailField';
@@ -41,18 +40,46 @@ export function FasilitasKomputasiPage() {
   const { hardware } = useHardware();
   const { layananDigital: software } = useLayananDigital();
 
-  // Form State
-  const [kode, setKode] = useState('');
-  const [nama, setNama] = useState('');
-  const [jenis, setJenis] = useState<JenisFasilitas>('Pusat Data');
-  const [bwIntra, setBwIntra] = useState<number>(0);
-  const [bwInter, setBwInter] = useState<number>(0);
-  const [lokasi, setLokasi] = useState('');
-  const [tier, setTier] = useState<KlasifikasiTier>('Non-Tier');
-  const [kepemilikan, setKepemilikan] = useState<KepemilikanFasilitas>('Sendiri');
-  const [pengamanan, setPengamanan] = useState('');
-  const [instansiId, setInstansiId] = useState('');
-  const [status, setStatus] = useState<StatusFasilitas>('Aktif');
+  const {
+    openAddModal, openEditModal, openDetailModal, closeModals,
+    isAddModalOpen, isEditModalOpen, isDetailModalOpen, editingItem, detailItem
+  } = useAssetCRUD<FasilitasKomputasi>('fasilitas_komputasi');
+
+  // Form State Persistence Key
+  const CACHE_KEY = 'fasilitas_komputasi_form_cache';
+
+  // Helper to get initial state from cache or default
+  const getInitial = (key: string, defaultValue: any) => {
+    const cached = localStorage.getItem(CACHE_KEY);
+    if (!cached) return defaultValue;
+    try {
+      const parsed = JSON.parse(cached);
+      return parsed[key] !== undefined ? parsed[key] : defaultValue;
+    } catch (e) {
+      return defaultValue;
+    }
+  };
+
+  const [kode, setKode] = useState(() => getInitial('kode', ''));
+  const [nama, setNama] = useState(() => getInitial('nama', ''));
+  const [jenis, setJenis] = useState<JenisFasilitas>(() => getInitial('jenis', 'Pusat Data'));
+  const [bwIntra, setBwIntra] = useState<number>(() => getInitial('bwIntra', 0));
+  const [bwInter, setBwInter] = useState<number>(() => getInitial('bwInter', 0));
+  const [lokasi, setLokasi] = useState(() => getInitial('lokasi', ''));
+  const [tier, setTier] = useState<KlasifikasiTier>(() => getInitial('tier', 'Non-Tier'));
+  const [kepemilikan, setKepemilikan] = useState<KepemilikanFasilitas>(() => getInitial('kepemilikan', 'Sendiri'));
+  const [pengamanan, setPengamanan] = useState(() => getInitial('pengamanan', ''));
+  const [instansiId, setInstansiId] = useState<number | ''>(() => getInitial('instansiId', ''));
+  const [status, setStatus] = useState<StatusFasilitas>(() => getInitial('status', 'Aktif'));
+
+  // Sync Form to LocalStorage
+  useEffect(() => {
+    if (isAddModalOpen || isEditModalOpen) {
+      localStorage.setItem(CACHE_KEY, JSON.stringify({
+        kode, nama, jenis, bwIntra, bwInter, lokasi, tier, kepemilikan, pengamanan, instansiId, status
+      }));
+    }
+  }, [kode, nama, jenis, bwIntra, bwInter, lokasi, tier, kepemilikan, pengamanan, instansiId, status, isAddModalOpen, isEditModalOpen]);
 
   // Confirmation Modal State
   const [confirmConfig, setConfirmConfig] = useState<{
@@ -75,50 +102,47 @@ export function FasilitasKomputasiPage() {
 
   const closeConfirm = () => setConfirmConfig(prev => ({ ...prev, isOpen: false, isLoading: false }));
 
+  const clearCache = useCallback(() => {
+    localStorage.removeItem(CACHE_KEY);
+  }, []);
+
   const resetForm = () => {
     setKode(''); setNama(''); setJenis('Pusat Data'); setBwIntra(0); setBwInter(0);
     setLokasi(''); setTier('Non-Tier'); setKepemilikan('Sendiri'); setPengamanan('');
-    setInstansiId(instansi[0]?.id || ''); setStatus('Aktif');
+    setInstansiId(instansi[0]?.id ?? ''); setStatus('Aktif');
+    clearCache();
   };
 
-  const {
-    openAddModal, openEditModal, openDetailModal, closeModals,
-    isAddModalOpen, isEditModalOpen, isDetailModalOpen, editingItem, detailItem
-  } = useAssetCRUD<FasilitasKomputasi>();
+  const handleAdd = () => {
+    resetForm();
+    openAddModal();
+  };
 
-  const handleAdd = () => { resetForm(); openAddModal(); };
-
-  const handleEdit = (item: FasilitasKomputasi) => {
-    setKode(item.kodeFasilitas); setNama(item.namaFasilitas); setJenis(item.jenisFasilitas);
-    setBwIntra(item.bandwidthIntranet); setBwInter(item.bandwidthInternet); setLokasi(item.lokasiFisik);
-    setTier(item.klasifikasiTier || 'Non-Tier'); setKepemilikan(item.kepemilikan);
-    setPengamanan(item.sistemPengamanan); setInstansiId(item.instansiId); setStatus(item.status);
+  const handleEdit = useCallback((item: FasilitasKomputasi) => {
+    setKode(item.kodeFasilitas);
+    setNama(item.namaFasilitas);
+    setJenis(item.jenisFasilitas);
+    setBwIntra(item.bandwidthIntranet || 0);
+    setBwInter(item.bandwidthInternet || 0);
+    setLokasi(item.lokasiFisik || '');
+    setTier(item.klasifikasiTier || 'Non-Tier');
+    setKepemilikan(item.kepemilikan);
+    setPengamanan(item.sistemPengamanan || '');
+    setInstansiId(item.instansiId || '');
+    setStatus(item.status);
     openEditModal(item);
-  };
+  }, [openEditModal]);
 
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault();
-    startSaving();
-    const payload: Omit<FasilitasKomputasi, 'id' | 'childAssetsCount' | 'created_at' | 'updated_at'> = {
-      kodeFasilitas: kode, namaFasilitas: nama, jenisFasilitas: jenis,
-      bandwidthIntranet: bwIntra, bandwidthInternet: bwInter, lokasiFisik: lokasi,
-      klasifikasiTier: jenis === 'Pusat Data' ? tier : null, kepemilikan,
-      sistemPengamanan: pengamanan, instansiId, status
-    } as any;
-
-    const options = {
-      onSuccess: () => notifyMutationFinished(closeModals),
-      onError: resetLoading
-    };
-    if (isEditModalOpen && editingItem) {
-      updateFasilitas(editingItem.id, payload, options);
-    } else {
-      addFasilitas(payload, options);
+  // Sticky Focus Persistence: Restore form ONLY if cache is empty AND we are in edit mode
+  useEffect(() => {
+    const cached = localStorage.getItem(CACHE_KEY);
+    if (isEditModalOpen && editingItem && !cached) {
+      handleEdit(editingItem);
     }
-  };
+  }, [isEditModalOpen, editingItem, handleEdit]);
 
+  // Logic & State
   const [activeTab, setActiveTab] = useState<'Semua' | JenisFasilitas>('Semua');
-
   const filteredDataRaw = useMemo(() => {
     return activeTab === 'Semua' ? fasilitas : fasilitas.filter(f => f.jenisFasilitas === activeTab);
   }, [fasilitas, activeTab]);
@@ -132,6 +156,47 @@ export function FasilitasKomputasiPage() {
     setActiveTab(tab);
     setCurrentPage(1);
     setSearchQuery('');
+  };
+
+  const handleSave = (e: React.FormEvent) => {
+    e.preventDefault();
+    startSaving();
+    const payload = {
+      kodeFasilitas: kode, 
+      namaFasilitas: nama, 
+      jenisFasilitas: jenis,
+      bandwidthIntranet: Number(bwIntra), 
+      bandwidthInternet: Number(bwInter), 
+      lokasiFisik: lokasi,
+      klasifikasiTier: (jenis === 'Pusat Data' || jenis === 'Pusat Komputasi') ? tier : null, 
+      kepemilikan,
+      sistemPengamanan: pengamanan, 
+      instansiId: Number(instansiId), 
+      status
+    };
+
+    const options = {
+      onSuccess: () => {
+        clearCache();
+        notifyMutationFinished(closeModals);
+      },
+      onError: resetLoading
+    };
+
+    if (isEditModalOpen && editingItem) {
+      updateFasilitas(String(editingItem.id), payload, options);
+    } else {
+      addFasilitas(payload, options);
+    }
+  };
+
+  const isInitialLoading = isFasilitasLoading && fasilitas.length === 0;
+
+  const counts = {
+    'Semua': fasilitas.length,
+    'Pusat Data': fasilitas.filter(f => f.jenisFasilitas === 'Pusat Data').length,
+    'Pusat Komputasi': fasilitas.filter(f => f.jenisFasilitas === 'Pusat Komputasi').length,
+    'Pusat Kendali': fasilitas.filter(f => f.jenisFasilitas === 'Pusat Kendali').length,
   };
 
   const attachedHardware = useMemo(() =>
@@ -158,19 +223,12 @@ export function FasilitasKomputasiPage() {
     );
   }
 
-  const counts = {
-    'Semua': fasilitas.length,
-    'Pusat Data': fasilitas.filter(f => f.jenisFasilitas === 'Pusat Data').length,
-    'Pusat Komputasi': fasilitas.filter(f => f.jenisFasilitas === 'Pusat Komputasi').length,
-    'Pusat Kendali': fasilitas.filter(f => f.jenisFasilitas === 'Pusat Kendali').length,
-  };
-
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
       <PageHeader
         title="Fasilitas Komputasi"
         subtitle="Pusat Data, Komputasi, dan Kendali yang menjadi fondasi penempatan aset infrastruktur TIK SPBE."
-        onAdd={openAddModal}
+        onAdd={handleAdd}
         addLabel="Tambah Fasilitas"
         icon="domain_add"
       />
@@ -213,7 +271,7 @@ export function FasilitasKomputasiPage() {
                   <StatusBadge status={f.jenisFasilitas} className="mt-1" />
                 </TableCell>
                 <TableCell>
-                  <div className="text-xs font-bold">{instansi.find(i => i.id === f.instansiId)?.singkatan || '-'}</div>
+                  <div className="text-xs font-bold">{instansi.find(i => i.id === Number(f.instansiId))?.singkatan || '-'}</div>
                   <div className="text-[10px] opacity-70 truncate max-w-[200px]">{f.lokasiFisik}</div>
                 </TableCell>
                 <TableCell><StatusBadge status={f.status} /></TableCell>
@@ -223,10 +281,10 @@ export function FasilitasKomputasiPage() {
                     onEdit={() => handleEdit(f)}
                     onDelete={() => triggerConfirm(
                       'Hapus Fasilitas?',
-                      `Apakah Anda yakin ingin menghapus "${f.namaFasilitas}"? Seluruh perangkat yang terhubung mungkin akan kehilangan referensi lokasi.`,
+                      `Apakah Anda yakin ingin menghapus "${f.namaFasilitas}"? Tindakan ini tidak dapat dibatalkan.`,
                       () => {
                         setConfirmConfig(prev => ({ ...prev, isLoading: true }));
-                        deleteFasilitas(f.id, {
+                        deleteFasilitas(String(f.id), {
                           onSuccess: closeConfirm,
                           onError: () => setConfirmConfig(prev => ({ ...prev, isLoading: false }))
                         });
@@ -255,7 +313,7 @@ export function FasilitasKomputasiPage() {
         />
       </Card>
 
-      <Modal isOpen={isAddModalOpen || isEditModalOpen} onClose={closeModals} title={isEditModalOpen ? "Edit Data Fasilitas" : "Tambah Data Fasilitas"} size="lg" closeOnOverlayClick={false}>
+      <Modal isOpen={isAddModalOpen || isEditModalOpen} onClose={closeModals} title={isEditModalOpen ? "Edit Data Fasilitas" : "Tambah Data Fasilitas"} size="lg">
         <form onSubmit={handleSave} className="space-y-6 px-1 pb-4">
           <fieldset disabled={isSaving}>
             <section className="space-y-4">
@@ -271,14 +329,14 @@ export function FasilitasKomputasiPage() {
               <Input label="Nama Fasilitas" value={nama} onChange={(e) => setNama(e.target.value)} required />
             </section>
 
-            <section className="space-y-4 p-4 bg-gray-50 border-2 border-black border-dashed mt-4">
+            <section className="space-y-4 p-4 bg-gray-50 border-2 border-black border-dashed mt-10">
               <h4 className="text-xs font-mono-bold uppercase bg-[#FFD700] border-2 border-black px-2 py-1 inline-block shadow-[2px_2px_0_0_#000]">
                 2. Kapasitas & Tiering
               </h4>
               <div className="grid grid-cols-2 gap-4">
                 <Input label="Bandwidth Internet (Mbps)" type="number" value={bwInter.toString()} onChange={(e) => setBwInter(Number(e.target.value))} />
                 <Input label="Bandwidth Intranet (Mbps)" type="number" value={bwIntra.toString()} onChange={(e) => setBwIntra(Number(e.target.value))} />
-                <Select label="Status Tier" value={tier || 'Non-Tier'} onChange={(e) => setTier(e.target.value as any)} disabled={jenis !== 'Pusat Data'}
+                <Select label="Status Tier" value={tier || 'Non-Tier'} onChange={(e) => setTier(e.target.value as any)} disabled={jenis !== 'Pusat Data' && jenis !== 'Pusat Komputasi'}
                   options={[{ label: 'Non-Tier', value: 'Non-Tier' }, { label: 'Tier 3', value: 'Tier 3' }, { label: 'Tier 4', value: 'Tier 4' }]}
                 />
                 <Select label="Kepemilikan" value={kepemilikan} onChange={(e) => setKepemilikan(e.target.value as any)}
@@ -287,13 +345,13 @@ export function FasilitasKomputasiPage() {
               </div>
             </section>
 
-            <section className="space-y-4 mt-4">
+            <section className="space-y-4 mt-10">
               <h4 className="text-xs font-mono-bold uppercase bg-[#00E5FF] border-2 border-black px-2 py-1 inline-block shadow-[2px_2px_0_0_#000]">
                 3. Lokasi & Keamanan
               </h4>
               <div className="grid grid-cols-2 gap-4">
                 <Input label="Lokasi Fisik / Gedung" value={lokasi} onChange={(e) => setLokasi(e.target.value)} />
-                <Select label="Penanggung Jawab" value={instansiId} onChange={(e) => setInstansiId(e.target.value)} options={instansi.map(i => ({ label: i.namaInstansi, value: i.id }))} />
+                <Select label="Penanggung Jawab" value={instansiId?.toString()} onChange={(e) => setInstansiId(e.target.value === '' ? '' : Number(e.target.value))} options={instansi.map(i => ({ label: i.namaInstansi, value: i.id.toString() }))} />
               </div>
               <Textarea label="Sistem Pengamanan" value={pengamanan} onChange={(e) => setPengamanan(e.target.value)} rows={2} />
               <Select label="Status Operasional" value={status} onChange={(e) => setStatus(e.target.value as any)}

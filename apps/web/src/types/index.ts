@@ -1,17 +1,17 @@
 export interface Rai {
-  id: string;
+  id: number;
   kodeRai: string;
   namaPusat: string;
 }
 
 export interface Instansi {
-  id: string;
+  id: number;
   namaInstansi: string;
   singkatan: string;
 }
 
 export interface Lokasi {
-  id: string;
+  id: number;
   namaLokasi: string;
   tipeLokasi: 'Pusat Data' | 'Command Center' | 'Sirkuit/Jaringan' | 'Vendor Cloud';
   alamat: string;
@@ -23,7 +23,7 @@ export type KepemilikanFasilitas = 'Sendiri' | 'Instansi Pemerintah Lain' | 'BUM
 export type StatusFasilitas = 'Aktif' | 'Non-Aktif' | 'Perbaikan';
 
 export interface FasilitasKomputasi {
-  id: string;
+  id: number;
   jenisFasilitas: JenisFasilitas;
   namaFasilitas: string;
   kodeFasilitas: string;
@@ -33,7 +33,7 @@ export interface FasilitasKomputasi {
   klasifikasiTier: KlasifikasiTier;
   kepemilikan: KepemilikanFasilitas;
   sistemPengamanan: string;
-  instansiId: string;
+  instansiId: number;
   status: StatusFasilitas;
   childAssetsCount?: number; // purely for mock/UI representation of cascade rules
 }
@@ -42,7 +42,7 @@ export type KonektivitasKategori = 'Jaringan Intra' | 'SPLP';
 export type KepemilikanKonektivitas = 'Pusat' | 'BUMN' | 'Pihak Ketiga' | 'Swasta';
 
 export interface Konektivitas {
-  id: string;
+  id: number;
   kategori: KonektivitasKategori;
   kodeAset: string;
   namaJaringan: string;
@@ -53,13 +53,13 @@ export interface Konektivitas {
   bandwidth?: string; // e.g., '10 Gbps'
   tipeMedia?: string; // 'Fiber Optic', 'Wireless', etc.
   mediaLainnya?: string; // e.g., 'Metronet'
-  fasilitasId?: string;
+  fasilitasId?: number;
 }
 
 export type HardwareKategori = 'Server' | 'Jaringan' | 'Keamanan' | 'Penyimpanan' | 'Periferal';
 
 export interface PerangkatKeras {
-  id: string;
+  id: number;
   kategori: HardwareKategori;
   kodeAset: string;
   namaPerangkat: string;
@@ -78,20 +78,20 @@ export interface PerangkatKeras {
   lokasiPenempatan?: string;
   jenisPenggunaanServer?: string; // e.g., "Server Aplikasi"
 
-  fasilitasId?: string;
-  instansiId?: string;
+  fasilitasId?: number;
+  instansiId?: number;
 
   // Dependency fields
-  perangkatJaringanId?: string;   // For security/other hardware
-  perangkatServerId?: string;     // For storage/software
-  softwareId?: string;            // For storage/other hardware
+  perangkatJaringanId?: number;   // For security/other hardware
+  perangkatServerId?: number;     // For storage/software
+  softwareId?: number;            // For storage/other hardware
   dataInfoDependency?: string;    // Text notes: "Backup VM, etc"
 }
 
 export type SoftwareKategori = 'Cloud' | 'Platform' | 'Software';
 
 export interface LayananDigital {
-  id: string;
+  id: number;
   kategori: SoftwareKategori;
   kodeAset: string;
   namaLayanan: string;
@@ -100,7 +100,7 @@ export interface LayananDigital {
   pengelola: string;
   statusKepemilikan: string;
 
-  instansiId?: string; // Unit Pengelola (from Master Data)
+  instansiId?: number; // Unit Pengelola (from Master Data)
 
   // Specific fields
   biayaLayanan?: number;
@@ -120,9 +120,9 @@ export interface LayananDigital {
   unitOperasionalCloud?: string;
   edukasiKeamananDependency?: string;
 
-  fasilitasId?: string;
-  hardwareServerId?: string;      // The physical/virtual host server
-  cloudDependencyId?: string;     // If platform software runs on a cloud service
+  fasilitasId?: number;
+  hardwareServerId?: number;      // The physical/virtual host server
+  cloudDependencyId?: number;     // If platform software runs on a cloud service
 
   // Cloud specific dependencies (SPBE)
   aplikasiDependency?: string;    // Notes/Placeholder for now
