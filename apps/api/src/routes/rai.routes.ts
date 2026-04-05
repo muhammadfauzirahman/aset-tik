@@ -28,7 +28,7 @@ router.get(
   authorize("masterData", "read"),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const data = await raiService.findById(parseInt(req.params.id, 10));
+      const data = await raiService.findById(parseInt(req.params.id as string, 10));
       res.json({ success: true, data });
     } catch (error) {
       next(error);
@@ -58,7 +58,22 @@ router.put(
   validate(updateRaiSchema),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const data = await raiService.update(parseInt(req.params.id, 10), req.body);
+      const data = await raiService.update(parseInt(req.params.id as string, 10), req.body);
+      res.json({ success: true, data });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.patch(
+  "/:id",
+  authenticate,
+  authorize("masterData", "update"),
+  validate(updateRaiSchema),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const data = await raiService.update(parseInt(req.params.id as string, 10), req.body);
       res.json({ success: true, data });
     } catch (error) {
       next(error);
@@ -72,7 +87,7 @@ router.delete(
   authorize("masterData", "delete"),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      await raiService.delete(parseInt(req.params.id, 10));
+      await raiService.delete(parseInt(req.params.id as string, 10));
       res.json({ success: true, message: "Referensi RAI berhasil dihapus." });
     } catch (error) {
       next(error);

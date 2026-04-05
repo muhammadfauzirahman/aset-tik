@@ -9,19 +9,29 @@ import { SummaryGrid } from '../components/ui/SummaryGrid';
 import { FilterTabs } from '../components/ui/FilterTabs';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { ActionButtons } from '../components/ui/ActionButtons';
-import { useMasterData } from '../store/useMasterData';
+import { ConfirmModal } from '../components/ui/ConfirmModal';
+
+// Hooks
+import { useMasterData } from '../hooks/useMasterData';
+import { useLoadingProgress } from '../hooks/useLoadingProgress';
 import type { Rai, Instansi, Lokasi } from '../types';
 
 type MasterTab = 'instansi' | 'lokasi' | 'rai';
 
 export function MasterData() {
   const [activeTab, setActiveTab] = useState<MasterTab>('instansi');
-  const masterData = useMasterData();
-  
-  // Defensive checks to ensure data is always an array
-  const instansi = masterData?.instansi || [];
-  const lokasi = masterData?.lokasi || [];
-  const rai = masterData?.rai || [];
+  const { 
+    instansi, 
+    lokasi, 
+    rai, 
+    isLoading, 
+    error,
+    addRai, updateRai, deleteRai,
+    addInstansi, updateInstansi, deleteInstansi,
+    addLokasi, updateLokasi, deleteLokasi
+  } = useMasterData();
+
+  const { isSaving, progress, startSaving, notifyMutationFinished, reset: resetLoading } = useLoadingProgress();
 
   const [isRaiModalOpen, setRaiModalOpen] = useState(false);
   const [isInstansiModalOpen, setInstansiModalOpen] = useState(false);
@@ -40,14 +50,42 @@ export function MasterData() {
   const [lokAlamat, setLokAlamat] = useState('');
   const [lokTipe, setLokTipe] = useState<Lokasi['tipeLokasi']>('Pusat Data');
 
+  // Confirmation Modal State
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    isLoading: boolean;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    isLoading: false,
+    onConfirm: () => {}
+  });
+
+  const triggerConfirm = (title: string, message: string, onConfirm: () => void) => {
+    setConfirmConfig({ isOpen: true, title, message, isLoading: false, onConfirm });
+  };
+
+  const closeConfirm = () => setConfirmConfig(prev => ({ ...prev, isOpen: false, isLoading: false }));
+
+  const closeAllModals = () => {
+    setRaiModalOpen(false);
+    setInstansiModalOpen(false);
+    setLokasiModalOpen(false);
+    resetLoading();
+  };
+
   // RAI Handlers
   const openAddRai = () => { setEditingRai(null); setRaiKode(''); setRaiNama(''); setRaiModalOpen(true); };
   const openEditRai = (item: Rai) => { setEditingRai(item); setRaiKode(item.kodeRai); setRaiNama(item.namaPusat); setRaiModalOpen(true); };
   const handleSaveRai = (e: React.FormEvent) => { 
     e.preventDefault(); 
-    if (editingRai) masterData.updateRai(editingRai.id, { kodeRai: raiKode, namaPusat: raiNama }); 
-    else masterData.addRai({ kodeRai: raiKode, namaPusat: raiNama }); 
-    setRaiModalOpen(false); 
+    startSaving();
+    if (editingRai) updateRai(editingRai.id, { kodeRai: raiKode, namaPusat: raiNama }, { onSuccess: () => notifyMutationFinished(closeAllModals), onError: resetLoading }); 
+    else addRai({ kodeRai: raiKode, namaPusat: raiNama }, { onSuccess: () => notifyMutationFinished(closeAllModals), onError: resetLoading }); 
   };
 
   // Instansi Handlers
@@ -55,9 +93,9 @@ export function MasterData() {
   const openEditInstansi = (item: Instansi) => { setEditingInstansi(item); setInstNama(item.namaInstansi); setInstSingkatan(item.singkatan); setInstansiModalOpen(true); };
   const handleSaveInstansi = (e: React.FormEvent) => { 
     e.preventDefault(); 
-    if (editingInstansi) masterData.updateInstansi(editingInstansi.id, { namaInstansi: instNama, singkatan: instSingkatan }); 
-    else masterData.addInstansi({ namaInstansi: instNama, singkatan: instSingkatan }); 
-    setInstansiModalOpen(false); 
+    startSaving();
+    if (editingInstansi) updateInstansi(editingInstansi.id, { namaInstansi: instNama, singkatan: instSingkatan }, { onSuccess: () => notifyMutationFinished(closeAllModals), onError: resetLoading }); 
+    else addInstansi({ namaInstansi: instNama, singkatan: instSingkatan }, { onSuccess: () => notifyMutationFinished(closeAllModals), onError: resetLoading }); 
   };
 
   // Lokasi Handlers
@@ -65,10 +103,26 @@ export function MasterData() {
   const openEditLokasi = (item: Lokasi) => { setEditingLokasi(item); setLokNama(item.namaLokasi); setLokTipe(item.tipeLokasi); setLokAlamat(item.alamat); setLokasiModalOpen(true); };
   const handleSaveLokasi = (e: React.FormEvent) => { 
     e.preventDefault(); 
-    if (editingLokasi) masterData.updateLokasi(editingLokasi.id, { namaLokasi: lokNama, tipeLokasi: lokTipe, alamat: lokAlamat }); 
-    else masterData.addLokasi({ namaLokasi: lokNama, tipeLokasi: lokTipe, alamat: lokAlamat }); 
-    setLokasiModalOpen(false); 
+    startSaving();
+    if (editingLokasi) updateLokasi(editingLokasi.id, { namaLokasi: lokNama, tipeLokasi: lokTipe, alamat: lokAlamat }, { onSuccess: () => notifyMutationFinished(closeAllModals), onError: resetLoading }); 
+    else addLokasi({ namaLokasi: lokNama, tipeLokasi: lokTipe, alamat: lokAlamat }, { onSuccess: () => notifyMutationFinished(closeAllModals), onError: resetLoading }); 
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-[60vh]">
+        <div className="text-2xl font-black uppercase animate-pulse italic">Memuat Master Data...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6 bg-red-100 border-4 border-red-600 text-red-600 font-bold">
+        Gagal memuat data: {(error as any).message}
+      </div>
+    );
+  }
 
   const summaryItems = [
     { label: 'Total Instansi', value: instansi.length, color: 'blue' as const },
@@ -118,7 +172,17 @@ export function MasterData() {
                   <TableCell className="text-right">
                     <ActionButtons 
                       onEdit={() => openEditRai(r)}
-                      onDelete={() => { if(confirm('Hapus RAI?')) masterData.deleteRai(r.id) }}
+                      onDelete={() => triggerConfirm(
+                        'Hapus RAI?', 
+                        `Apakah Anda yakin ingin menghapus referensi arsitektur "${r.namaPusat}"? Tindakan ini tidak dapat dibatalkan.`,
+                        () => {
+                          setConfirmConfig(prev => ({ ...prev, isLoading: true }));
+                          deleteRai(r.id, { 
+                            onSuccess: closeConfirm,
+                            onError: () => setConfirmConfig(prev => ({ ...prev, isLoading: false }))
+                          });
+                        }
+                      )}
                     />
                   </TableCell>
                 </TableRow>
@@ -149,7 +213,17 @@ export function MasterData() {
                   <TableCell className="text-right">
                     <ActionButtons 
                       onEdit={() => openEditInstansi(i)}
-                      onDelete={() => { if(confirm('Hapus instansi?')) masterData.deleteInstansi(i.id) }}
+                      onDelete={() => triggerConfirm(
+                        'Hapus Instansi?', 
+                        `Apakah Anda yakin ingin menghapus "${i.namaInstansi}"? Seluruh relasi aset mungkin akan terpengaruh.`,
+                        () => {
+                          setConfirmConfig(prev => ({ ...prev, isLoading: true }));
+                          deleteInstansi(i.id, { 
+                            onSuccess: closeConfirm,
+                            onError: () => setConfirmConfig(prev => ({ ...prev, isLoading: false }))
+                          });
+                        }
+                      )}
                     />
                   </TableCell>
                 </TableRow>
@@ -183,7 +257,17 @@ export function MasterData() {
                   <TableCell className="text-right">
                     <ActionButtons 
                       onEdit={() => openEditLokasi(l)}
-                      onDelete={() => { if(confirm('Hapus lokasi?')) masterData.deleteLokasi(l.id) }}
+                      onDelete={() => triggerConfirm(
+                        'Hapus Lokasi?', 
+                        `Apakah Anda yakin ingin menghapus lokasi "${l.namaLokasi}"?`,
+                        () => {
+                          setConfirmConfig(prev => ({ ...prev, isLoading: true }));
+                          deleteLokasi(l.id, { 
+                            onSuccess: closeConfirm,
+                            onError: () => setConfirmConfig(prev => ({ ...prev, isLoading: false }))
+                          });
+                        }
+                      )}
                     />
                   </TableCell>
                 </TableRow>
@@ -195,31 +279,32 @@ export function MasterData() {
       )}
 
       {/* RAI Modal */}
-      <Modal isOpen={isRaiModalOpen} onClose={() => setRaiModalOpen(false)} title={editingRai ? "Edit RAI" : "Tambah RAI"} size="xs">
+      <Modal isOpen={isRaiModalOpen} onClose={closeAllModals} title={editingRai ? "Edit RAI" : "Tambah RAI"} size="xs">
         <form onSubmit={handleSaveRai} className="space-y-4">
-          <Input label="Kode Referensi" value={raiKode} onChange={e => setRaiKode(e.target.value)} required placeholder="e.g. RAI.01" />
-          <Input label="Nama Kategori" value={raiNama} onChange={e => setRaiNama(e.target.value)} required placeholder="e.g. Pusat Data Nasional" />
-          <Button type="submit" className="w-full">Simpan</Button>
+          <Input label="Kode Referensi" value={raiKode} onChange={e => setRaiKode(e.target.value)} required placeholder="e.g. RAI.01" disabled={isSaving} />
+          <Input label="Nama Kategori" value={raiNama} onChange={e => setRaiNama(e.target.value)} required placeholder="e.g. Pusat Data Nasional" disabled={isSaving} />
+          <Button type="submit" className="w-full" isLoading={isSaving} progress={progress}>Simpan</Button>
         </form>
       </Modal>
 
       {/* Instansi Modal */}
-      <Modal isOpen={isInstansiModalOpen} onClose={() => setInstansiModalOpen(false)} title={editingInstansi ? "Edit Instansi" : "Tambah Instansi"} size="xs">
+      <Modal isOpen={isInstansiModalOpen} onClose={closeAllModals} title={editingInstansi ? "Edit Instansi" : "Tambah Instansi"} size="xs">
         <form onSubmit={handleSaveInstansi} className="space-y-4">
-          <Input label="Nama Lengkap" value={instNama} onChange={e => setInstNama(e.target.value)} required placeholder="e.g. Kementerian Kominfo" />
-          <Input label="Singkatan" value={instSingkatan} onChange={e => setInstSingkatan(e.target.value)} required placeholder="e.g. KOMINFO" />
-          <Button type="submit" className="w-full">Simpan</Button>
+          <Input label="Nama Lengkap" value={instNama} onChange={e => setInstNama(e.target.value)} required placeholder="e.g. Kementerian Kominfo" disabled={isSaving} />
+          <Input label="Singkatan" value={instSingkatan} onChange={e => setInstSingkatan(e.target.value)} required placeholder="e.g. KOMINFO" disabled={isSaving} />
+          <Button type="submit" className="w-full" isLoading={isSaving} progress={progress}>Simpan</Button>
         </form>
       </Modal>
 
       {/* Lokasi Modal */}
-      <Modal isOpen={isLokasiModalOpen} onClose={() => setLokasiModalOpen(false)} title={editingLokasi ? "Edit Lokasi" : "Tambah Lokasi"} size="xs">
+      <Modal isOpen={isLokasiModalOpen} onClose={closeAllModals} title={editingLokasi ? "Edit Lokasi" : "Tambah Lokasi"} size="xs">
         <form onSubmit={handleSaveLokasi} className="space-y-4">
-          <Input label="Nama Lokasi" value={lokNama} onChange={e => setLokNama(e.target.value)} required placeholder="e.g. PDN Cikarang" />
+          <Input label="Nama Lokasi" value={lokNama} onChange={e => setLokNama(e.target.value)} required placeholder="e.g. PDN Cikarang" disabled={isSaving} />
           <Select 
             label="Tipe" 
             value={lokTipe} 
             onChange={e => setLokTipe(e.target.value as any)} 
+            disabled={isSaving}
             options={[
               {label: 'Pusat Data', value: 'Pusat Data'},
               {label: 'Command Center', value: 'Command Center'},
@@ -227,10 +312,23 @@ export function MasterData() {
               {label: 'Vendor Cloud', value: 'Vendor Cloud'}
             ]} 
           />
-          <Input label="Alamat" value={lokAlamat} onChange={e => setLokAlamat(e.target.value)} required placeholder="e.g. Jl. Raya Cikarang No. 1" />
-          <Button type="submit" className="w-full">Simpan</Button>
+          <Input label="Alamat" value={lokAlamat} onChange={e => setLokAlamat(e.target.value)} required placeholder="e.g. Jl. Raya Cikarang No. 1" disabled={isSaving} />
+          <Button type="submit" className="w-full" isLoading={isSaving} progress={progress}>Simpan</Button>
         </form>
       </Modal>
+
+      {/* Global Confirmation Modal */}
+      <ConfirmModal 
+        isOpen={confirmConfig.isOpen}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        isLoading={confirmConfig.isLoading}
+        onClose={closeConfirm}
+        onConfirm={confirmConfig.onConfirm}
+        confirmLabel="Hapus Sekarang"
+        cancelLabel="Batal"
+        type="danger"
+      />
     </div>
   );
 }

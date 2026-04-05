@@ -130,6 +130,133 @@ async function main() {
   }
   console.log(`  ✓ Fasilitas Komputasi: ${fasilitasData.length} records`);
 
+  const dcJtmId = (await prisma.fasilitasKomputasi.findUnique({ where: { kodeFasilitas: "DC-JTM-01" } }))?.id || 1;
+  const ccJtmId = (await prisma.fasilitasKomputasi.findUnique({ where: { kodeFasilitas: "CC-JTM-01" } }))?.id || 2;
+
+  // ── Perangkat Keras ──────────────────────────────
+  const hardwareData = [
+    {
+      kategori: "Server",
+      kodeAset: "SRV-DL380-01",
+      namaPerangkat: "HP ProLiant DL380P Gen8",
+      deskripsi: "Server Untuk Aplikasi Utama e-Kinerja",
+      pemilik: "Pemprov Jatim",
+      unitPengelola: "Bidang TIK",
+      statusKepemilikan: "Sendiri",
+      kapasitasMemori: "64 GB",
+      kapasitasPenyimpanan: "1 TB",
+      teknologiProsesor: "Intel Xeon",
+      teknikPenyimpanan: "RAID 1",
+      fasilitasId: dcJtmId,
+      instansiId: pemprovId,
+    },
+    {
+      kategori: "Jaringan",
+      kodeAset: "NET-SW-01",
+      namaPerangkat: "Cisco Catalyst 2960",
+      deskripsi: "Switch Distribusi Lantai 2",
+      pemilik: "Pemprov Jatim",
+      unitPengelola: "Bidang TIK",
+      statusKepemilikan: "Sendiri",
+      tipePerangkat: "Switch",
+      fasilitasId: dcJtmId,
+      instansiId: pemprovId,
+    },
+    {
+      kategori: "Keamanan",
+      kodeAset: "SEC-FW-01",
+      namaPerangkat: "FortiGate 200E",
+      deskripsi: "Firewall Utama DC",
+      pemilik: "Pemprov Jatim",
+      unitPengelola: "Bidang TIK",
+      statusKepemilikan: "Sendiri",
+      tipePerangkat: "Firewall",
+      fasilitasId: dcJtmId,
+      instansiId: pemprovId,
+    }
+  ];
+
+  for (const hw of hardwareData) {
+    await prisma.perangkatKeras.upsert({
+      where: { kodeAset: hw.kodeAset },
+      update: {},
+      create: hw,
+    });
+  }
+  console.log(`  ✓ Perangkat Keras: ${hardwareData.length} records`);
+
+  // ── Layanan Digital ──────────────────────────────
+  const layananData = [
+    {
+      kategori: "Cloud",
+      kodeAset: "CLD-AWS-01",
+      namaLayanan: "AWS EC2 Production",
+      deskripsi: "Hosting Aplikasi Mobile",
+      pemilik: "Amazon Inc",
+      pengelola: "Bidang TIK",
+      statusKepemilikan: "Sewa",
+      biayaLayanan: 15000000,
+      jangkaWaktu: "Bulanan",
+      fasilitasId: dcJtmId,
+    },
+    {
+      kategori: "Software",
+      kodeAset: "SW-ORA-01",
+      namaLayanan: "Oracle Database Enterprise",
+      deskripsi: "Lisensi Database Keuangan",
+      pemilik: "Oracle Corp",
+      pengelola: "Bidang TIK",
+      statusKepemilikan: "Lisensi",
+      jenisLisensi: "Tahunan",
+      tipeSoftware: "Database",
+      fasilitasId: dcJtmId,
+    }
+  ];
+
+  for (const lay of layananData) {
+    await prisma.layananDigital.upsert({
+      where: { kodeAset: lay.kodeAset },
+      update: {},
+      create: lay,
+    });
+  }
+  console.log(`  ✓ Layanan Digital: ${layananData.length} records`);
+
+  // ── Konektivitas ─────────────────────────────────
+  const konektivitasData = [
+    {
+      kategori: "Jaringan Intra",
+      kodeAset: "NET-INTRA-01",
+      namaJaringan: "Internet Fiber 1 Gbps",
+      deskripsi: "Main ISP Telkom",
+      pemilik: "Telkom",
+      statusKepemilikan: "Sewa",
+      jenisJaringan: "Dedicated",
+      bandwidth: "1 Gbps",
+      tipeMedia: "Fiber Optic",
+      fasilitasId: dcJtmId,
+    },
+    {
+      kategori: "SPLP",
+      kodeAset: "NET-SPLP-01",
+      namaJaringan: "VPN SKPD",
+      deskripsi: "Konektivitas antar SKPD",
+      pemilik: "Pemprov Jatim",
+      statusKepemilikan: "Sendiri",
+      tipeMedia: "Intranet",
+      fasilitasId: dcJtmId,
+    }
+  ];
+
+  for (const kon of konektivitasData) {
+    await prisma.konektivitas.upsert({
+      where: { kodeAset: kon.kodeAset },
+      update: {},
+      create: kon,
+    });
+  }
+  console.log(`  ✓ Konektivitas: ${konektivitasData.length} records`);
+
   console.log("\n✅ Seeding complete!");
   console.log("\n📝 Note: Register an admin user via POST /api/auth/sign-up/email,");
   console.log("   then use Prisma Studio to set their role to 'admin'.");

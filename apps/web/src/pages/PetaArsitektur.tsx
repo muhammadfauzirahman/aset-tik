@@ -1,10 +1,12 @@
 import { useState, useMemo } from 'react';
 import { PageHeader } from '../components/layout/PageHeader';
 import { Card } from '../components/ui/Card';
-import { useHardwareStore } from '../store/useHardwareStore';
-import { useSoftwareStore } from '../store/useSoftwareStore';
-import { useFasilitasStore } from '../store/useFasilitasStore';
-import { useKonektivitasStore } from '../store/useKonektivitasStore';
+
+// Hooks
+import { useHardware } from '../hooks/useHardware';
+import { useLayananDigital } from '../hooks/useLayananDigital';
+import { useFasilitas } from '../hooks/useFasilitas';
+import { useKonektivitas } from '../hooks/useKonektivitas';
 
 // ─── Types ──────────────────────────────────────────
 interface MapNode {
@@ -23,10 +25,10 @@ function BrutalNode({ node, isCenter }: { node: MapNode; isCenter?: boolean }) {
       className={`px-4 py-3 border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] min-w-[160px] max-w-[220px] ${node.color} ${isCenter ? 'ring-4 ring-[#FFD600] scale-105' : ''}`}
     >
       <div className="flex items-center space-x-2">
-        <span className="material-symbols-outlined text-xl">{node.icon}</span>
+        <span className="material-symbols-outlined text-xl text-black font-black">{node.icon}</span>
         <div className="flex flex-col min-w-0">
-          <span className="font-mono text-[9px] uppercase opacity-60 leading-none tracking-widest">{node.type}</span>
-          <span className="font-mono font-bold text-xs uppercase truncate">{node.label}</span>
+          <span className="font-mono text-[9px] uppercase opacity-60 leading-none tracking-widest text-black">{node.type}</span>
+          <span className="font-mono font-bold text-xs uppercase truncate text-black">{node.label}</span>
         </div>
       </div>
     </div>
@@ -37,10 +39,12 @@ function BrutalNode({ node, isCenter }: { node: MapNode; isCenter?: boolean }) {
 export function PetaArsitektur() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const hardware = useHardwareStore(state => state.hardware) || [];
-  const software = useSoftwareStore(state => state.software) || [];
-  const fasilitas = useFasilitasStore(state => state.fasilitas) || [];
-  const konektivitas = useKonektivitasStore(state => state.konektivitas) || [];
+  const { hardware, isLoading: isHwLoading } = useHardware();
+  const { layananDigital: software, isLoading: isSwLoading } = useLayananDigital();
+  const { fasilitas, isLoading: isFasLoading } = useFasilitas();
+  const { konektivitas, isLoading: isKonLoading } = useKonektivitas();
+
+  const isLoading = isHwLoading || isSwLoading || isFasLoading || isKonLoading;
 
   // Combine all assets for selection
   const allAssets = useMemo(() => [
@@ -103,7 +107,15 @@ export function PetaArsitektur() {
     });
 
     return { upstreamNodes: upstream, centerNode: cNode, downstreamNodes: downstream };
-  }, [selectedId, hardware, software, fasilitas, konektivitas, allAssets]);
+  }, [selectedId, hardware, software, fasilitas, allAssets]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-[60vh]">
+        <div className="text-2xl font-black uppercase animate-pulse italic">Membangun Peta Arsitektur...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-[calc(100vh-64px)] flex flex-col">
@@ -118,12 +130,12 @@ export function PetaArsitektur() {
       <div className="flex-1 p-6 gap-6 grid grid-cols-4 min-h-0">
         {/* Sidebar Selector */}
         <Card className="col-span-1 border-4 border-black shadow-[8px_8px_0px_0px_#1A1A1A] bg-white overflow-hidden flex flex-col">
-          <div className="p-4 bg-black text-white font-mono font-bold text-xs uppercase">
+          <div className="p-4 bg-black text-white font-mono font-bold text-xs uppercase text-center">
             Pilih Aset Utama
           </div>
-          <div className="flex-1 overflow-y-auto p-2 space-y-1">
+          <div className="flex-1 overflow-y-auto p-2 space-y-1 bg-gray-50">
             {allAssets.length === 0 && (
-              <p className="text-xs font-mono text-center py-8 opacity-50">Belum ada data aset.</p>
+              <p className="text-xs font-mono text-center py-8 opacity-50 italic">Belum ada data aset.</p>
             )}
             {allAssets.map(asset => (
               <button
@@ -131,12 +143,12 @@ export function PetaArsitektur() {
                 onClick={() => setSelectedId(asset.id)}
                 className={`w-full text-left px-3 py-2 border-2 border-black font-mono text-[11px] uppercase transition-all ${
                   selectedId === asset.id
-                    ? 'bg-[#FFD600] translate-x-1 shadow-[2px_2px_0px_0px_#000]'
-                    : 'hover:bg-[#00E5FF]'
+                    ? 'bg-[#FFD600] translate-x-1 shadow-[2px_2px_0px_0px_#000] font-black'
+                    : 'bg-white hover:bg-[#00E5FF] hover:translate-x-1'
                 }`}
               >
                 <div className="flex items-center space-x-2">
-                  <span className="material-symbols-outlined text-sm">{asset.icon}</span>
+                  <span className="material-symbols-outlined text-sm font-black">{asset.icon}</span>
                   <span className="truncate">{asset.label}</span>
                 </div>
               </button>
@@ -145,17 +157,17 @@ export function PetaArsitektur() {
         </Card>
 
         {/* Viewport — 3 Tier Map */}
-        <Card className="col-span-3 border-4 border-black shadow-[12px_12px_0px_0px_#1A1A1A] bg-[#F5F5F0] relative overflow-auto">
+        <Card className="col-span-3 border-4 border-black shadow-[12px_12px_0px_0px_#1A1A1A] bg-[#F5F5F0] relative overflow-auto pattern-grid">
           {!selectedId ? (
             <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-12 space-y-4">
-              <span className="material-symbols-outlined text-8xl opacity-20">account_tree</span>
+              <span className="material-symbols-outlined text-8xl opacity-20 animate-bounce">account_tree</span>
               <div>
-                <h3 className="font-mono font-bold text-2xl uppercase">Silakan Pilih Aset</h3>
+                <h3 className="font-mono font-black text-2xl uppercase italic">Silakan Pilih Aset</h3>
                 <p className="font-mono text-sm opacity-60">Pilih salah satu aset di samping untuk melihat garis keterhubungan infrastrukturnya.</p>
               </div>
             </div>
           ) : (
-            <div className="p-8 space-y-0 min-h-full flex flex-col items-center">
+            <div className="p-8 space-y-0 min-h-full flex flex-col items-center relative z-10">
               {/* TIER LABEL: Upstream */}
               {upstreamNodes.length > 0 && (
                 <div className="w-full space-y-4">
@@ -225,23 +237,23 @@ export function PetaArsitektur() {
 
               {/* No connections message */}
               {upstreamNodes.length === 0 && downstreamNodes.length === 0 && (
-                <div className="mt-8 border-2 border-dashed border-black p-6 text-center bg-white">
-                  <span className="material-symbols-outlined text-3xl opacity-30">link_off</span>
-                  <p className="font-mono text-xs uppercase mt-2 opacity-60">
-                    Aset ini belum memiliki relasi dependensi.
+                <div className="mt-8 border-4 border-black p-8 text-center bg-white shadow-[6px_6px_0_0_#000]">
+                  <span className="material-symbols-outlined text-4xl opacity-30 text-black font-black">link_off</span>
+                  <p className="font-mono text-sm uppercase mt-2 font-black italic">
+                    Aset ini belum memiliki relasi dependensi yang tercatat.
                   </p>
                 </div>
               )}
 
               {/* Legend */}
-              <div className="mt-12 w-full border-t-4 border-black pt-6">
-                <h4 className="font-mono font-bold text-[10px] uppercase mb-3 opacity-60">Keterangan Warna</h4>
-                <div className="flex flex-wrap gap-3">
-                  <div className="flex items-center gap-2"><div className="w-4 h-4 bg-[#00E5FF] border-2 border-black" /><span className="font-mono text-[10px]">Fasilitas/Host</span></div>
-                  <div className="flex items-center gap-2"><div className="w-4 h-4 bg-[#A8FF00] border-2 border-black" /><span className="font-mono text-[10px]">Cloud/Network</span></div>
-                  <div className="flex items-center gap-2"><div className="w-4 h-4 bg-[#FFD600] border-2 border-black" /><span className="font-mono text-[10px]">Aset Fokus</span></div>
-                  <div className="flex items-center gap-2"><div className="w-4 h-4 bg-[#FF5252] border-2 border-black" /><span className="font-mono text-[10px]">Software Layer</span></div>
-                  <div className="flex items-center gap-2"><div className="w-4 h-4 bg-white border-2 border-black" /><span className="font-mono text-[10px]">HW Dependent</span></div>
+              <div className="mt-12 w-full border-t-4 border-black pt-6 bg-white p-4 border-2 shadow-[4px_4px_0_0_#000]">
+                <h4 className="font-mono font-black text-xs uppercase mb-3 text-black italic">Legenda Peta Arsitektur</h4>
+                <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+                  <div className="flex items-center gap-2"><div className="w-4 h-4 bg-[#00E5FF] border-2 border-black" /><span className="font-mono text-[10px] uppercase font-bold">Fasilitas/Host</span></div>
+                  <div className="flex items-center gap-2"><div className="w-4 h-4 bg-[#A8FF00] border-2 border-black" /><span className="font-mono text-[10px] uppercase font-bold">Cloud/Network</span></div>
+                  <div className="flex items-center gap-2"><div className="w-4 h-4 bg-[#FFD600] border-2 border-black" /><span className="font-mono text-[10px] uppercase font-bold">Aset Fokus</span></div>
+                  <div className="flex items-center gap-2"><div className="w-4 h-4 bg-[#FF5252] border-2 border-black" /><span className="font-mono text-[10px] uppercase font-bold">Software Layer</span></div>
+                  <div className="flex items-center gap-2"><div className="w-4 h-4 bg-white border-2 border-black" /><span className="font-mono text-[10px] uppercase font-bold">HW Dependent</span></div>
                 </div>
               </div>
             </div>

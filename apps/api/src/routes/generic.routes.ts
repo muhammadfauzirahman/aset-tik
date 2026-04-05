@@ -89,6 +89,23 @@ export function createCrudRouter<T>({
     }
   );
 
+  // PATCH /:id -> Partial Update
+  router.patch(
+    "/:id",
+    authenticate,
+    authorize(resourceName, "update"),
+    validate(updateSchema),
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const id = parseInt(req.params.id as string, 10);
+        const data = await service.update(id, req.body);
+        res.json({ success: true, data });
+      } catch (error) {
+        next(error);
+      }
+    }
+  );
+
   // DELETE /:id -> Delete
   router.delete(
     "/:id",

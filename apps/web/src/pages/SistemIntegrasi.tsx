@@ -4,18 +4,35 @@ import { Button } from '../components/ui/Button';
 import { Input, Select, Textarea } from '../components/ui/Input';
 import { Table, TableHead, TableHeader, TableBody, TableRow, TableCell } from '../components/ui/Table';
 import { Modal } from '../components/ui/Modal';
-import { useKonektivitasStore } from '../store/useKonektivitasStore';
-import { useAssetCRUD } from '../hooks/useAssetCRUD';
+
+// Reusable Components
 import { PageHeader } from '../components/layout/PageHeader';
 import { FilterTabs } from '../components/ui/FilterTabs';
 import { SummaryGrid } from '../components/ui/SummaryGrid';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { ActionButtons } from '../components/ui/ActionButtons';
 import { DetailField } from '../components/ui/DetailField';
+import { ConfirmModal } from '../components/ui/ConfirmModal';
+
+// Hooks & Stores
+import { useKonektivitas } from '../hooks/useKonektivitas';
+import { useAssetCRUD } from '../hooks/useAssetCRUD';
+import { useLoadingProgress } from '../hooks/useLoadingProgress';
 import type { Konektivitas, KonektivitasKategori } from '../types';
 
 export function SistemIntegrasi() {
-  const { konektivitas, addKonektivitas, updateKonektivitas, deleteKonektivitas } = useKonektivitasStore();
+  const { 
+    konektivitas, 
+    isLoading, 
+    error,
+    addKonektivitas, 
+    updateKonektivitas, 
+    deleteKonektivitas,
+    isAdding,
+    isDeleting
+  } = useKonektivitas();
+  
+  const { isSaving, progress, startSaving, notifyMutationFinished, reset: resetLoading } = useLoadingProgress();
   
   const {
     isAddModalOpen, isEditModalOpen, isDetailModalOpen, editingItem, detailItem,
@@ -31,6 +48,27 @@ export function SistemIntegrasi() {
     tipeMedia: 'Fiber Optic'
   });
 
+  // Confirmation Modal State
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    isLoading: boolean;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    isLoading: false,
+    onConfirm: () => {}
+  });
+
+  const triggerConfirm = (title: string, message: string, onConfirm: () => void) => {
+    setConfirmConfig({ isOpen: true, title, message, isLoading: false, onConfirm });
+  };
+
+  const closeConfirm = () => setConfirmConfig(prev => ({ ...prev, isOpen: false, isLoading: false }));
+
   const handleEdit = (item: Konektivitas) => {
     setFormData(item);
     openEditModal(item);
@@ -38,12 +76,39 @@ export function SistemIntegrasi() {
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
+    startSaving();
     const payload = formData as Omit<Konektivitas, 'id'>;
-    if (isEditModalOpen && editingItem) updateKonektivitas(editingItem.id, payload);
-    else addKonektivitas(payload);
-    closeModals();
-    setFormData({ kategori: 'Jaringan Intra', statusKepemilikan: 'Pusat', tipeMedia: 'Fiber Optic' });
+
+    const options = {
+      onSuccess: () => {
+        notifyMutationFinished(closeModals);
+        setFormData({ kategori: 'Jaringan Intra', statusKepemilikan: 'Pusat', tipeMedia: 'Fiber Optic' });
+      },
+      onError: resetLoading
+    };
+
+    if (isEditModalOpen && editingItem) {
+      updateKonektivitas(editingItem.id, payload, options);
+    } else {
+      addKonektivitas(payload, options);
+    }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-[60vh]">
+        <div className="text-2xl font-black uppercase animate-pulse italic">Memuat Data Konektivitas...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6 bg-red-100 border-4 border-red-600 text-red-600 font-bold">
+        Gagal memuat data: {(error as any).message}
+      </div>
+    );
+  }
 
   const filteredData = activeFilter === 'Semua' ? konektivitas : konektivitas.filter(k => k.kategori === activeFilter);
 
@@ -89,7 +154,17 @@ export function SistemIntegrasi() {
                   <ActionButtons 
                     onDetail={() => openDetailModal(k)}
                     onEdit={() => handleEdit(k)}
-                    onDelete={() => { if(confirm('Hapus data?')) deleteKonektivitas(k.id) }}
+                    onDelete={() => triggerConfirm(
+                      'Hapus Konektivitas?',
+                      `Apakah Anda yakin ingin menghapus "${k.namaJaringan}"? Koneksi ini mungkin digunakan oleh layanan cloud atau infrastruktur lain.`,
+                      () => {
+                        setConfirmConfig(prev => ({ ...prev, isLoading: true }));
+                        deleteKonektivitas(k.id, { 
+                          onSuccess: closeConfirm,
+                          onError: () => setConfirmConfig(prev => ({ ...prev, isLoading: false }))
+                        });
+                      }
+                    )}
                   />
                 </TableCell>
               </TableRow>
@@ -100,44 +175,50 @@ export function SistemIntegrasi() {
 
       <Modal isOpen={isAddModalOpen || isEditModalOpen} onClose={closeModals} title={isEditModalOpen ? "Edit Konektivitas" : "Tambah Konektivitas"} size="lg">
         <form onSubmit={handleSave} className="space-y-6 px-1 pb-4">
-          <section className="space-y-4">
-            <h4 className="text-xs font-mono-bold uppercase bg-[#B9FF66] border-2 border-black px-2 py-1 inline-block shadow-[2px_2px_0_0_#000]">
-              1. Identitas & Klasifikasi
-            </h4>
-            <div className="grid grid-cols-2 gap-4">
-              <Select label="Kategori" value={formData.kategori} onChange={(e) => setFormData({...formData, kategori: e.target.value as any})}
-                options={[{ label: 'Jaringan Intra Pemerintah', value: 'Jaringan Intra' }, { label: 'SPLP', value: 'SPLP' }]} required />
-              <Input label="Kode Aset" value={formData.kodeAset || ''} onChange={(e) => setFormData({...formData, kodeAset: e.target.value})} required />
-            </div>
-            <Input label="Nama Layanan/Jaringan" value={formData.namaJaringan || ''} onChange={(e) => setFormData({...formData, namaJaringan: e.target.value})} required />
-            <Textarea label="Deskripsi" value={formData.deskripsi || ''} onChange={(e) => setFormData({...formData, deskripsi: e.target.value})} rows={3} />
-          </section>
+          <fieldset disabled={isSaving}>
+            <section className="space-y-4">
+              <h4 className="text-xs font-mono-bold uppercase bg-[#B9FF66] border-2 border-black px-2 py-1 inline-block shadow-[2px_2px_0_0_#000]">
+                1. Identitas & Klasifikasi
+              </h4>
+              <div className="grid grid-cols-2 gap-4">
+                <Select label="Kategori" value={formData.kategori} onChange={(e) => setFormData({...formData, kategori: e.target.value as any})}
+                  options={[{ label: 'Jaringan Intra Pemerintah', value: 'Jaringan Intra' }, { label: 'SPLP', value: 'SPLP' }]} required />
+                <Input label="Kode Aset" value={formData.kodeAset || ''} onChange={(e) => setFormData({...formData, kodeAset: e.target.value})} required />
+              </div>
+              <Input label="Nama Layanan/Jaringan" value={formData.namaJaringan || ''} onChange={(e) => setFormData({...formData, namaJaringan: e.target.value})} required />
+              <Textarea label="Deskripsi" value={formData.deskripsi || ''} onChange={(e) => setFormData({...formData, deskripsi: e.target.value})} rows={3} />
+            </section>
 
-          <section className="space-y-4 p-4 bg-gray-50 border-2 border-black border-dashed">
-            <h4 className="text-xs font-mono-bold uppercase bg-[#FFD700] border-2 border-black px-2 py-1 inline-block shadow-[2px_2px_0_0_#000]">
-              2. Spesifikasi Teknis
-            </h4>
-            <div className="grid grid-cols-2 gap-4">
-              <Input label="Bandwidth" value={formData.bandwidth || ''} onChange={(e) => setFormData({...formData, bandwidth: e.target.value})} />
-              <Select label="Tipe Media" value={formData.tipeMedia} onChange={(e) => setFormData({...formData, tipeMedia: e.target.value})}
-                options={['Fiber Optic', 'Radio', 'VSAT', 'UTP', 'Lainnya'].map(v => ({label:v, value:v}))} />
-            </div>
-          </section>
+            <section className="space-y-4 p-4 bg-gray-50 border-2 border-black border-dashed">
+              <h4 className="text-xs font-mono-bold uppercase bg-[#FFD700] border-2 border-black px-2 py-1 inline-block shadow-[2px_2px_0_0_#000]">
+                2. Spesifikasi Teknis
+              </h4>
+              <div className="grid grid-cols-2 gap-4">
+                <Input label="Bandwidth" value={formData.bandwidth || ''} onChange={(e) => setFormData({...formData, bandwidth: e.target.value})} />
+                <Select label="Tipe Media" value={formData.tipeMedia} onChange={(e) => setFormData({...formData, tipeMedia: e.target.value})}
+                  options={['Fiber Optic', 'Radio', 'VSAT', 'UTP', 'Lainnya'].map(v => ({label:v, value:v}))} />
+              </div>
+            </section>
 
-          <section className="space-y-4">
-            <h4 className="text-xs font-mono-bold uppercase bg-[#00E5FF] border-2 border-black px-2 py-1 inline-block shadow-[2px_2px_0_0_#000]">
-              3. Pengelola & Status
-            </h4>
-            <div className="grid grid-cols-2 gap-4">
-              <Input label="Nama Pemilik" value={formData.pemilik || ''} onChange={(e) => setFormData({...formData, pemilik: e.target.value})} required />
-              <Select label="Status Kepemilikan" value={formData.statusKepemilikan} onChange={(e) => setFormData({...formData, statusKepemilikan: e.target.value as any})}
-                options={['Pusat', 'BUMN', 'Swasta', 'Pihak Ketiga'].map(v => ({label:v, value:v}))} required />
-            </div>
-          </section>
+            <section className="space-y-4">
+              <h4 className="text-xs font-mono-bold uppercase bg-[#00E5FF] border-2 border-black px-2 py-1 inline-block shadow-[2px_2px_0_0_#000]">
+                3. Pengelola & Status
+              </h4>
+              <div className="grid grid-cols-2 gap-4">
+                <Input label="Nama Pemilik" value={formData.pemilik || ''} onChange={(e) => setFormData({...formData, pemilik: e.target.value})} required />
+                <Select label="Status Kepemilikan" value={formData.statusKepemilikan} onChange={(e) => setFormData({...formData, statusKepemilikan: e.target.value as any})}
+                  options={['Pusat', 'BUMN', 'Swasta', 'Pihak Ketiga'].map(v => ({label:v, value:v}))} required />
+              </div>
+            </section>
+          </fieldset>
 
-          <div className="flex gap-3 pt-6 border-t-4 border-black bg-white pb-2">
-            <button type="button" onClick={closeModals} className="flex-1 py-3 font-black uppercase italic border-2 border-black hover:bg-gray-100 transition-all">Batal</button>
-            <button type="submit" className="flex-[2] py-3 bg-black text-white font-black uppercase italic border-2 border-black shadow-[4px_4px_0_0_#666] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all">SIMPAN DATA</button>
+          <div className="flex gap-3 pt-6 border-t-4 border-black bg-white pb-2 mt-6">
+            <button type="button" onClick={closeModals} className="flex-1 py-3 font-black uppercase italic border-2 border-black hover:bg-gray-100 transition-all" disabled={isSaving}>
+              Batal
+            </button>
+            <Button type="submit" className="flex-[2] py-3" isLoading={isSaving} progress={progress}>
+              SIMPAN DATA KONEKSI
+            </Button>
           </div>
         </form>
       </Modal>
@@ -200,6 +281,19 @@ export function SistemIntegrasi() {
           </div>
         )}
       </Modal>
+
+      {/* Global Confirmation Modal */}
+      <ConfirmModal 
+        isOpen={confirmConfig.isOpen}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        isLoading={confirmConfig.isLoading}
+        onClose={closeConfirm}
+        onConfirm={confirmConfig.onConfirm}
+        confirmLabel="Hapus Sekarang"
+        cancelLabel="Batal"
+        type="danger"
+      />
     </div>
   );
 }

@@ -2,21 +2,29 @@ import * as XLSX from 'xlsx';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { PageHeader } from '../components/layout/PageHeader';
-import { useHardwareStore } from '../store/useHardwareStore';
-import { useSoftwareStore } from '../store/useSoftwareStore';
-import { useFasilitasStore } from '../store/useFasilitasStore';
-import { useKonektivitasStore } from '../store/useKonektivitasStore';
+
+// Hooks
+import { useHardware } from '../hooks/useHardware';
+import { useLayananDigital } from '../hooks/useLayananDigital';
+import { useFasilitas } from '../hooks/useFasilitas';
+import { useKonektivitas } from '../hooks/useKonektivitas';
+
+// Formatters
 import { formatRupiah, formatDate } from '../lib/formatters';
 
 export function Laporan() {
-  const hardware = useHardwareStore(state => state.hardware) || [];
-  const softwareAll = useSoftwareStore(state => state.software) || [];
-  const cloud = Array.isArray(softwareAll) ? softwareAll.filter(s => s.kategori === 'Cloud') : [];
-  const platform = Array.isArray(softwareAll) ? softwareAll.filter(s => s.kategori === 'Platform') : [];
-  const fasilitas = useFasilitasStore(state => state.fasilitas) || [];
-  const konektivitas = useKonektivitasStore(state => state.konektivitas) || [];
+  const { hardware, isLoading: isHwLoading } = useHardware();
+  const { layananDigital: softwareAll, isLoading: isSwLoading } = useLayananDigital();
+  const { fasilitas, isLoading: isFasLoading } = useFasilitas();
+  const { konektivitas, isLoading: isKonLoading } = useKonektivitas();
+
+  const isLoading = isHwLoading || isSwLoading || isFasLoading || isKonLoading;
+
+  const cloud = useMemo(() => softwareAll.filter(s => s.kategori === 'Cloud'), [softwareAll]);
+  const platform = useMemo(() => softwareAll.filter(s => s.kategori === 'Platform'), [softwareAll]);
 
   const exportToExcel = () => {
+    if (isLoading) return;
     try {
       const wb = XLSX.utils.book_new();
 
@@ -109,33 +117,34 @@ export function Laporan() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8">
         <Card className="p-8 border-4 border-black shadow-[12px_12px_0px_0px_#1A1A1A] flex flex-col items-center text-center space-y-6 bg-[#FFD600]">
           <div className="w-20 h-20 bg-white border-4 border-black flex items-center justify-center shadow-[4px_4px_0px_0px_#1A1A1A]">
-            <span className="material-symbols-outlined text-5xl">table_view</span>
+            <span className="material-symbols-outlined text-5xl font-black">{isLoading ? 'sync' : 'table_view'}</span>
           </div>
           <div className="space-y-2">
-            <h3 className="font-mono-bold text-2xl uppercase">Daftar Aset (AS IS)</h3>
-            <p className="font-body text-sm opacity-80">
+            <h3 className="font-mono-bold text-2xl uppercase italic">Daftar Aset (AS IS)</h3>
+            <p className="font-body text-sm opacity-80 decoration-black">
               Format Excel mencakup seluruh kategori: Komputasi Awan, Software, Hardware, dan Jaringan Intra.
             </p>
           </div>
           <Button 
             onClick={exportToExcel}
-            className="w-full bg-white text-black hover:bg-black hover:text-white transition-colors py-4 text-lg"
+            disabled={isLoading}
+            className="w-full bg-black text-white hover:bg-gray-800 transition-all py-4 text-lg border-2 border-black shadow-[4px_4px_0_0_#999] active:translate-x-1 active:translate-y-1 active:shadow-none"
           >
-            UNDUH LAPORAN EXCEL
+            {isLoading ? 'MENYIAPKAN DATA...' : 'UNDUH LAPORAN EXCEL'}
           </Button>
         </Card>
 
         <Card className="p-8 border-4 border-black shadow-[12px_12px_0px_0px_#1A1A1A] flex flex-col items-center text-center space-y-6 bg-[#00E5FF] opacity-60">
           <div className="w-20 h-20 bg-white border-4 border-black flex items-center justify-center shadow-[4px_4px_0px_0px_#1A1A1A]">
-            <span className="material-symbols-outlined text-5xl">analytics</span>
+            <span className="material-symbols-outlined text-5xl font-black">analytics</span>
           </div>
           <div className="space-y-2">
-            <h3 className="font-mono-bold text-2xl uppercase">Statistik Lanjut</h3>
+            <h3 className="font-mono-bold text-2xl uppercase italic">Statistik Lanjut</h3>
             <p className="font-body text-sm opacity-80 underline italic">
               Coming Soon: Visualisasi distribusi aset per-SKPD dan Tren Biaya.
             </p>
           </div>
-          <Button disabled className="w-full grayscale cursor-not-allowed">
+          <Button disabled className="w-full grayscale cursor-not-allowed py-4 border-2 border-black">
             BELUM TERSEDIA
           </Button>
         </Card>
@@ -143,3 +152,5 @@ export function Laporan() {
     </div>
   );
 }
+
+import { useMemo } from 'react';

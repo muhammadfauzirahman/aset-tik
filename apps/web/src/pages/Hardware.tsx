@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input, Select, Textarea } from '../components/ui/Input';
@@ -12,19 +12,37 @@ import { SummaryGrid } from '../components/ui/SummaryGrid';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { ActionButtons } from '../components/ui/ActionButtons';
 import { DetailField } from '../components/ui/DetailField';
+import { ConfirmModal } from '../components/ui/ConfirmModal';
 
 // Stores & Hooks
-import { useHardwareStore } from '../store/useHardwareStore';
-import { useFasilitasStore } from '../store/useFasilitasStore';
-import { useSoftwareStore } from '../store/useSoftwareStore';
-import { useMasterData } from '../store/useMasterData';
+import { useHardware } from '../hooks/useHardware';
+import { useFasilitas } from '../hooks/useFasilitas';
+import { useLayananDigital } from '../hooks/useLayananDigital';
+import { useMasterData } from '../hooks/useMasterData';
 import { useAssetCRUD } from '../hooks/useAssetCRUD';
-import type { PerangkatKeras, HardwareKategori } from '../types';
+import { useLoadingProgress } from '../hooks/useLoadingProgress';
+import type { PerangkatKeras, HardwareKategori, FasilitasKomputasi, LayananDigital, Instansi } from '../types';
+
+// Formatters
+import { formatRupiah, parseRupiah } from '../lib/formatters';
 
 export function Hardware() {
-  const { hardware, addHardware, updateHardware, deleteHardware } = useHardwareStore();
-  const { fasilitas } = useFasilitasStore();
-  const { software } = useSoftwareStore();
+  const { 
+    hardware, 
+    isLoading, 
+    error, 
+    addHardware, 
+    updateHardware, 
+    deleteHardware,
+    isAdding,
+    isUpdating,
+    isDeleting
+  } = useHardware();
+
+  const { isSaving, progress, startSaving, notifyMutationFinished, reset: resetLoading } = useLoadingProgress();
+  
+  const { fasilitas } = useFasilitas();
+  const { layananDigital: software } = useLayananDigital();
   const { instansi } = useMasterData();
 
   const [activeFilter, setActiveFilter] = useState<'Semua' | HardwareKategori>('Semua');
@@ -50,6 +68,27 @@ export function Hardware() {
   const [perangkatServerId, setPerangkatServerId] = useState('');
   const [softwareId, setSoftwareId] = useState('');
   const [dataInfoDependency, setDataInfoDependency] = useState('');
+
+  // Confirmation Modal State
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    isLoading: boolean;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    isLoading: false,
+    onConfirm: () => {}
+  });
+
+  const triggerConfirm = (title: string, message: string, onConfirm: () => void) => {
+    setConfirmConfig({ isOpen: true, title, message, isLoading: false, onConfirm });
+  };
+
+  const closeConfirm = () => setConfirmConfig(prev => ({ ...prev, isOpen: false, isLoading: false }));
 
   const resetForm = () => {
     setKategori('Server');
@@ -117,13 +156,15 @@ export function Hardware() {
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
+    startSaving();
+    
     const payload: Omit<PerangkatKeras, 'id'> = {
       kategori,
       kodeAset: kode,
       namaPerangkat: nama,
       deskripsi,
       pemilik,
-      unitPengelola: instansi.find(i => i.id === instansiId)?.namaInstansi || '',
+      unitPengelola: instansi.find((i: Instansi) => i.id === instansiId)?.namaInstansi || '',
       statusKepemilikan,
       instansiId,
       kapasitasMemori: kategori === 'Server' ? memori : undefined,
@@ -141,13 +182,33 @@ export function Hardware() {
       dataInfoDependency: kategori === 'Penyimpanan' ? dataInfoDependency : undefined,
     };
 
+    const options = {
+      onSuccess: () => notifyMutationFinished(closeModals),
+      onError: resetLoading
+    };
+
     if (isEditModalOpen && editingItem) {
-      updateHardware(editingItem.id, payload);
+      updateHardware(editingItem.id, payload, options);
     } else {
-      addHardware(payload);
+      addHardware(payload, options);
     }
-    closeModals();
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-[60vh]">
+        <div className="text-2xl font-black uppercase animate-pulse italic">Memuat Data Hardware...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6 bg-red-100 border-4 border-red-600 text-red-600 font-bold">
+        Gagal memuat data: {(error as any).message}
+      </div>
+    );
+  }
 
   const filteredHardware = activeFilter === 'Semua' 
     ? hardware 
@@ -205,7 +266,17 @@ export function Hardware() {
                   <ActionButtons 
                     onDetail={() => openDetailModal(h)}
                     onEdit={() => handleEdit(h)}
-                    onDelete={() => { if(confirm('Hapus aset ini?')) deleteHardware(h.id) }}
+                    onDelete={() => triggerConfirm(
+                      'Hapus Aset Hardware?',
+                      `Apakah Anda yakin ingin menghapus "${h.namaPerangkat}"? Data pendukung lainnya mungkin akan terpengaruh.`,
+                      () => {
+                        setConfirmConfig(prev => ({ ...prev, isLoading: true }));
+                        deleteHardware(h.id, { 
+                          onSuccess: closeConfirm,
+                          onError: () => setConfirmConfig(prev => ({ ...prev, isLoading: false }))
+                        });
+                      }
+                    )}
                   />
                 </TableCell>
               </TableRow>
@@ -222,139 +293,141 @@ export function Hardware() {
         closeOnOverlayClick={false}
       >
         <form onSubmit={handleSave} className="space-y-6 px-1 pb-4">
-          {/* Section 1: Identitas */}
-          <section className="space-y-4">
-            <h4 className="text-xs font-mono-bold uppercase bg-[#B9FF66] border-2 border-black px-2 py-1 inline-block shadow-[2px_2px_0_0_#000]">
-              1. Identitas Perangkat
-            </h4>
-            <div className="grid grid-cols-2 gap-4">
-              <Select label="Kategori" value={kategori} onChange={(e) => setKategori(e.target.value as HardwareKategori)}
-                options={['Server', 'Jaringan', 'Keamanan', 'Penyimpanan', 'Periferal'].map(c => ({ label: `Perangkat Keras ${c}`, value: c }))}
+          <fieldset disabled={isAdding || isUpdating}>
+            {/* Section 1: Identitas */}
+            <section className="space-y-4">
+              <h4 className="text-xs font-mono-bold uppercase bg-[#B9FF66] border-2 border-black px-2 py-1 inline-block shadow-[2px_2px_0_0_#000]">
+                1. Identitas Perangkat
+              </h4>
+              <div className="grid grid-cols-2 gap-4">
+                <Select label="Kategori" value={kategori} onChange={(e) => setKategori(e.target.value as HardwareKategori)}
+                  options={['Server', 'Jaringan', 'Keamanan', 'Penyimpanan', 'Periferal'].map(c => ({ label: `Perangkat Keras ${c}`, value: c }))}
+                />
+                <Input label="Kode Aset" value={kode} onChange={(e) => setKode(e.target.value)} required placeholder="e.g. SRV-001" />
+              </div>
+              <Input 
+                label={kategori === 'Server' ? "Nama Server" : kategori === 'Jaringan' ? "Nama Network/Communication Device" : kategori === 'Keamanan' ? "Nama Perangkat Keamanan" : kategori === 'Penyimpanan' ? "Nama Data Storage" : "Nama Perangkat Periferal"} 
+                value={nama} onChange={(e) => setNama(e.target.value)} required placeholder="Sesuai Nama Perangkat" 
               />
-              <Input label="Kode Aset" value={kode} onChange={(e) => setKode(e.target.value)} required placeholder="e.g. SRV-001" />
-            </div>
-            <Input 
-              label={kategori === 'Server' ? "Nama Server" : kategori === 'Jaringan' ? "Nama Network/Communication Device" : kategori === 'Keamanan' ? "Nama Perangkat Keamanan" : kategori === 'Penyimpanan' ? "Nama Data Storage" : "Nama Perangkat Periferal"} 
-              value={nama} onChange={(e) => setNama(e.target.value)} required placeholder="Sesuai Nama Perangkat" 
-            />
-            <Textarea 
-              label={kategori === 'Server' ? "Deskripsi Server" : kategori === 'Jaringan' ? "Deskripsi Network/Communication Device" : kategori === 'Keamanan' ? "Deskripsi Security Device" : kategori === 'Penyimpanan' ? "Deskripsi Data Storage" : "Deskripsi Periferal"} 
-              value={deskripsi} onChange={(e) => setDeskripsi(e.target.value)} placeholder="Tuliskan deskripsi perangkat secara detail..." rows={3} 
-            />
-          </section>
-          
-          {/* Section 2: Spesifikasi Teknis */}
-          <section className="space-y-4 p-4 bg-gray-50 border-2 border-black border-dashed">
-            <h4 className="text-xs font-mono-bold uppercase bg-[#FFD700] border-2 border-black px-2 py-1 inline-block shadow-[2px_2px_0_0_#000]">
-              2. Spesifikasi Teknis
-            </h4>
-            <div className="grid grid-cols-2 gap-4">
-              {(kategori === 'Server' || kategori === 'Jaringan') && (
-                <Input label={kategori === 'Server' ? "Kapasitas Memori" : "Tipe Memori/Bandwidth"} placeholder="e.g. 64 GB" value={memori} onChange={(e) => setMemori(e.target.value)} />
-              )}
-              {(kategori === 'Server' || kategori === 'Penyimpanan') && (
-                <Input label={kategori === 'Server' ? "Jumlah Kapasitas Penyimpanan" : "Kapasitas Penyimpanan"} placeholder="e.g. 1.2 TB SAS" value={penyimpanan} onChange={(e) => setPenyimpanan(e.target.value)} />
-              )}
-              {kategori === 'Server' && (
-                <>
-                  <Select label="Jenis Penggunaan Server" value={penggunaan} onChange={(e) => setPenggunaan(e.target.value)}
-                    options={['Server Aplikasi', 'Server Database', 'File Server', 'Web Server', 'Mail Server', 'Active Directory', 'DNS', 'Proxy'].map(v => ({ label: v, value: v }))}
+              <Textarea 
+                label={kategori === 'Server' ? "Deskripsi Server" : kategori === 'Jaringan' ? "Deskripsi Network/Communication Device" : kategori === 'Keamanan' ? "Deskripsi Security Device" : kategori === 'Penyimpanan' ? "Deskripsi Data Storage" : "Deskripsi Periferal"} 
+                value={deskripsi} onChange={(e) => setDeskripsi(e.target.value)} placeholder="Tuliskan deskripsi perangkat secara detail..." rows={3} 
+              />
+            </section>
+            
+            {/* Section 2: Spesifikasi Teknis */}
+            <section className="space-y-4 p-4 bg-gray-50 border-2 border-black border-dashed mt-4">
+              <h4 className="text-xs font-mono-bold uppercase bg-[#FFD700] border-2 border-black px-2 py-1 inline-block shadow-[2px_2px_0_0_#000]">
+                2. Spesifikasi Teknis
+              </h4>
+              <div className="grid grid-cols-2 gap-4">
+                {(kategori === 'Server' || kategori === 'Jaringan') && (
+                  <Input label={kategori === 'Server' ? "Kapasitas Memori" : "Tipe Memori/Bandwidth"} placeholder="e.g. 64 GB" value={memori} onChange={(e) => setMemori(e.target.value)} />
+                )}
+                {(kategori === 'Server' || kategori === 'Penyimpanan') && (
+                  <Input label={kategori === 'Server' ? "Jumlah Kapasitas Penyimpanan" : "Kapasitas Penyimpanan"} placeholder="e.g. 1.2 TB SAS" value={penyimpanan} onChange={(e) => setPenyimpanan(e.target.value)} />
+                )}
+                {kategori === 'Server' && (
+                  <>
+                    <Select label="Jenis Penggunaan Server" value={penggunaan} onChange={(e) => setPenggunaan(e.target.value)}
+                      options={['Server Aplikasi', 'Server Database', 'File Server', 'Web Server', 'Mail Server', 'Active Directory', 'DNS', 'Proxy'].map(v => ({ label: v, value: v }))}
+                    />
+                    <Select label="Jenis Teknologi Prosesor" value={prosesor} onChange={(e) => setProsesor(e.target.value)}
+                      options={['High End', 'Mid End', 'Low End'].map(v => ({ label: v, value: v }))}
+                    />
+                    <Input label="Teknik Penyimpanan" value={teknikSimpan} onChange={(e) => setTeknikSimpan(e.target.value)} placeholder="e.g. RAID 0, RAID 5" />
+                    <Input label="Lokasi Perangkat Lunak Server" value={lokasiDetil} onChange={(e) => setLokasiDetil(e.target.value)} placeholder="Lokasi OS/SW" />
+                  </>
+                )}
+                {kategori === 'Jaringan' && (
+                  <Select label="Tipe Network/Communication Device" value={tipe} onChange={(e) => setTipe(e.target.value)}
+                    options={['Router', 'Multilayer Switch', 'Core Switch', 'Access Point', 'Gateway'].map(v => ({ label: v, value: v }))}
                   />
-                  <Select label="Jenis Teknologi Prosesor" value={prosesor} onChange={(e) => setProsesor(e.target.value)}
-                    options={['High End', 'Mid End', 'Low End'].map(v => ({ label: v, value: v }))}
+                )}
+                {kategori === 'Keamanan' && (
+                  <Select label="Tipe Security Device" value={tipe} onChange={(e) => setTipe(e.target.value)}
+                    options={['Firewall Hardware', 'WAF', 'IPS/IDS', 'VPN Gateway', 'HSM'].map(v => ({ label: v, value: v }))}
                   />
-                  <Input label="Teknik Penyimpanan" value={teknikSimpan} onChange={(e) => setTeknikSimpan(e.target.value)} placeholder="e.g. RAID 0, RAID 5" />
-                  <Input label="Lokasi Perangkat Lunak Server" value={lokasiDetil} onChange={(e) => setLokasiDetil(e.target.value)} placeholder="Lokasi OS/SW" />
-                </>
-              )}
-              {kategori === 'Jaringan' && (
-                <Select label="Tipe Network/Communication Device" value={tipe} onChange={(e) => setTipe(e.target.value)}
-                  options={['Router', 'Multilayer Switch', 'Core Switch', 'Access Point', 'Gateway'].map(v => ({ label: v, value: v }))}
+                )}
+                {kategori === 'Penyimpanan' && (
+                  <>
+                    <Select label="Metode Akses Data Sharing" value={metodeAkses} onChange={(e) => setMetodeAkses(e.target.value)}
+                      options={['NAS', 'SAN', 'Object Storage (S3)', 'Direct Attached'].map(v => ({ label: v, value: v }))}
+                    />
+                    <Input label="Lokasi Data Storage" value={lokasiDetil} onChange={(e) => setLokasiDetil(e.target.value)} placeholder="e.g. Rack A-12" />
+                  </>
+                )}
+                {kategori === 'Periferal' && (
+                  <>
+                    <Input label="Tipe Periferal" value={tipe} onChange={(e) => setTipe(e.target.value)} placeholder="e.g. Scanner High Volume, Printer Plotter" />
+                    <Input label="Lokasi Penempatan Periferal" value={lokasiDetil} onChange={(e) => setLokasiDetil(e.target.value)} placeholder="e.g. Ruang Arsip Lt.1" />
+                  </>
+                )}
+              </div>
+            </section>
+
+            {/* Section 3: Pengelola & Kepemilikkan */}
+            <section className="space-y-4 mt-4">
+              <h4 className="text-xs font-mono-bold uppercase bg-[#00E5FF] border-2 border-black px-2 py-1 inline-block shadow-[2px_2px_0_0_#000]">
+                3. Pengelola & Kepemilikkan
+              </h4>
+              <div className="grid grid-cols-2 gap-4">
+                <Input label="Nama Pemilik" value={pemilik} onChange={(e) => setPemilik(e.target.value)} required placeholder="Instansi/Bagian Pemilik" />
+                <Select label={
+                  kategori === 'Server' ? "Unit Pengelola Server" : 
+                  kategori === 'Jaringan' ? "Unit Pengelola Network Device" : 
+                  kategori === 'Keamanan' ? "Unit Pengelola Security Device" : 
+                  kategori === 'Penyimpanan' ? "Unit Pengelola Data Storage" : 
+                  "Unit Pengelola Perangkat Periferal"
+                } value={instansiId} onChange={(e) => setInstansiId(e.target.value)}
+                  options={instansi.map((i: Instansi) => ({ label: i.namaInstansi, value: i.id }))}
+                  required 
                 />
-              )}
-              {kategori === 'Keamanan' && (
-                <Select label="Tipe Security Device" value={tipe} onChange={(e) => setTipe(e.target.value)}
-                  options={['Firewall Hardware', 'WAF', 'IPS/IDS', 'VPN Gateway', 'HSM'].map(v => ({ label: v, value: v }))}
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <Select label="Status Kepemilikkan" value={statusKepemilikan} onChange={(e) => setStatusKepemilikan(e.target.value)}
+                  options={['Sendiri', 'Sewa', 'Hibah', 'BUMN/Pihak Ketiga'].map(v => ({ label: v, value: v }))}
+                  required 
                 />
-              )}
+              </div>
+            </section>
+
+            {/* Section 4: Relasi Dependensi */}
+            <section className="space-y-4 mt-4">
+              <h4 className="text-xs font-mono-bold uppercase bg-[#FF4D4D] text-white border-2 border-black px-2 py-1 inline-block shadow-[2px_2px_0_0_#000]">
+                4. Relasi Dependensi Arsitektur
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Select label="→ Fasilitas Komputasi (Dependency)" value={fasilitasId} onChange={(e) => setFasilitasId(e.target.value)}
+                  options={[{label: 'Pilih Fasilitas', value: ''}, ...fasilitas.map((f: FasilitasKomputasi) => ({ label: f.namaFasilitas, value: f.id }))]}
+                />
+                <Select label="→ Perangkat Jaringan (Dependency)" value={perangkatJaringanId} onChange={(e) => setPerangkatJaringanId(e.target.value)}
+                  options={[{label: 'Tanpa Koneksi', value: ''}, ...hardware.filter(h => h.kategori === 'Jaringan').map(h => ({ label: h.namaPerangkat, value: h.id }))]}
+                />
+                {(kategori === 'Server' || kategori === 'Penyimpanan') && (
+                  <Select label={kategori === 'Server' ? "→ Perangkat Lunak Platform (Dependency)" : "← Perangkat Lunak Platform (Dependency)"} value={softwareId} onChange={(e) => setSoftwareId(e.target.value)}
+                    options={[{label: 'None / Bare Metal', value: ''}, ...software.map((s: LayananDigital) => ({ label: s.namaLayanan, value: s.id }))]}
+                  />
+                )}
+                {kategori === 'Penyimpanan' && (
+                  <Select label="← Perangkat Keras Server (Dependency)" value={perangkatServerId} onChange={(e) => setPerangkatServerId(e.target.value)}
+                    options={[{label: 'Bukan Node/Host', value: ''}, ...hardware.filter(h => h.kategori === 'Server').map(h => ({ label: h.namaPerangkat, value: h.id }))]}
+                  />
+                )}
+              </div>
               {kategori === 'Penyimpanan' && (
-                <>
-                  <Select label="Metode Akses Data Sharing" value={metodeAkses} onChange={(e) => setMetodeAkses(e.target.value)}
-                    options={['NAS', 'SAN', 'Object Storage (S3)', 'Direct Attached'].map(v => ({ label: v, value: v }))}
-                  />
-                  <Input label="Lokasi Data Storage" value={lokasiDetil} onChange={(e) => setLokasiDetil(e.target.value)} placeholder="e.g. Rack A-12" />
-                </>
+                <Textarea label="← Data dan Informasi (Dependency)" value={dataInfoDependency} onChange={(e) => setDataInfoDependency(e.target.value)} rows={2} placeholder="Sebutkan relasi data..." />
               )}
-              {kategori === 'Periferal' && (
-                <>
-                  <Input label="Tipe Periferal" value={tipe} onChange={(e) => setTipe(e.target.value)} placeholder="e.g. Scanner High Volume, Printer Plotter" />
-                  <Input label="Lokasi Penempatan Periferal" value={lokasiDetil} onChange={(e) => setLokasiDetil(e.target.value)} placeholder="e.g. Ruang Arsip Lt.1" />
-                </>
-              )}
-            </div>
-          </section>
+            </section>
+          </fieldset>
 
-          {/* Section 3: Pengelola & Kepemilikkan */}
-          <section className="space-y-4">
-            <h4 className="text-xs font-mono-bold uppercase bg-[#00E5FF] border-2 border-black px-2 py-1 inline-block shadow-[2px_2px_0_0_#000]">
-              3. Pengelola & Kepemilikkan
-            </h4>
-            <div className="grid grid-cols-2 gap-4">
-              <Input label="Nama Pemilik" value={pemilik} onChange={(e) => setPemilik(e.target.value)} required placeholder="Instansi/Bagian Pemilik" />
-              <Select label={
-                kategori === 'Server' ? "Unit Pengelola Server" : 
-                kategori === 'Jaringan' ? "Unit Pengelola Network Device" : 
-                kategori === 'Keamanan' ? "Unit Pengelola Security Device" : 
-                kategori === 'Penyimpanan' ? "Unit Pengelola Data Storage" : 
-                "Unit Pengelola Perangkat Periferal"
-              } value={instansiId} onChange={(e) => setInstansiId(e.target.value)}
-                options={instansi.map(i => ({ label: i.namaInstansi, value: i.id }))}
-                required 
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <Select label="Status Kepemilikkan" value={statusKepemilikan} onChange={(e) => setStatusKepemilikan(e.target.value)}
-                options={['Sendiri', 'Sewa', 'Hibah', 'BUMN/Pihak Ketiga'].map(v => ({ label: v, value: v }))}
-                required 
-              />
-            </div>
-          </section>
-
-          {/* Section 4: Relasi Dependensi */}
-          <section className="space-y-4">
-            <h4 className="text-xs font-mono-bold uppercase bg-[#FF4D4D] text-white border-2 border-black px-2 py-1 inline-block shadow-[2px_2px_0_0_#000]">
-              4. Relasi Dependensi Arsitektur
-            </h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Select label="→ Fasilitas Komputasi (Dependency)" value={fasilitasId} onChange={(e) => setFasilitasId(e.target.value)}
-                options={[{label: 'Pilih Fasilitas', value: ''}, ...fasilitas.map(f => ({ label: f.namaFasilitas, value: f.id }))]}
-              />
-              <Select label="→ Perangkat Jaringan (Dependency)" value={perangkatJaringanId} onChange={(e) => setPerangkatJaringanId(e.target.value)}
-                options={[{label: 'Tanpa Koneksi', value: ''}, ...hardware.filter(h => h.kategori === 'Jaringan').map(h => ({ label: h.namaPerangkat, value: h.id }))]}
-              />
-              {(kategori === 'Server' || kategori === 'Penyimpanan') && (
-                <Select label={kategori === 'Server' ? "→ Perangkat Lunak Platform (Dependency)" : "← Perangkat Lunak Platform (Dependency)"} value={softwareId} onChange={(e) => setSoftwareId(e.target.value)}
-                  options={[{label: 'None / Bare Metal', value: ''}, ...software.map(s => ({ label: s.namaLayanan, value: s.id }))]}
-                />
-              )}
-              {kategori === 'Penyimpanan' && (
-                <Select label="← Perangkat Keras Server (Dependency)" value={perangkatServerId} onChange={(e) => setPerangkatServerId(e.target.value)}
-                  options={[{label: 'Bukan Node/Host', value: ''}, ...hardware.filter(h => h.kategori === 'Server').map(h => ({ label: h.namaPerangkat, value: h.id }))]}
-                />
-              )}
-            </div>
-            {kategori === 'Penyimpanan' && (
-              <Textarea label="← Data dan Informasi (Dependency)" value={dataInfoDependency} onChange={(e) => setDataInfoDependency(e.target.value)} rows={2} placeholder="Sebutkan relasi data..." />
-            )}
-          </section>
-
-          <div className="flex gap-3 pt-6 border-t-4 border-black bg-white pb-2">
-            <button type="button" onClick={closeModals} className="flex-1 py-3 font-black uppercase italic border-2 border-black hover:bg-gray-100 transition-all">
+          <div className="flex gap-3 pt-6 border-t-4 border-black bg-white pb-2 mt-6">
+            <button type="button" onClick={closeModals} className="flex-1 py-3 font-black uppercase italic border-2 border-black hover:bg-gray-100 transition-all" disabled={isSaving}>
               Batal
             </button>
-            <button type="submit" className="flex-[2] py-3 bg-black text-white font-black uppercase italic border-2 border-black shadow-[4px_4px_0_0_#666] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all">
+            <Button type="submit" className="flex-[2] py-3" isLoading={isSaving} progress={progress}>
               SIMPAN DATA HARDWARE
-            </button>
+            </Button>
           </div>
         </form>
       </Modal>
@@ -459,19 +532,19 @@ export function Hardware() {
                     Relasi & Dependensi Arsitektur
                   </h3>
                   <div className="space-y-1">
-                    <DetailField label="→ Fasilitas Komputasi (Dependency)" value={fasilitas.find(f => f.id === detailItem.fasilitasId)?.namaFasilitas || 'Unknown Facility'} icon="apartment" />
+                    <DetailField label="→ Fasilitas Komputasi (Dependency)" value={fasilitas.find((f: FasilitasKomputasi) => f.id === detailItem.fasilitasId)?.namaFasilitas || 'Unknown Facility'} icon="apartment" />
                     {detailItem.kategori === 'Keamanan' && (
                       <DetailField label="→ Perangkat Keras Jaringan (Dependency)" value={hardware.find(h => h.id === detailItem.perangkatJaringanId)?.namaPerangkat || 'None'} icon="lan" />
                     )}
                     {detailItem.kategori === 'Penyimpanan' && (
                       <>
-                        <DetailField label="← Perangkat Lunak Platform (Dependency)" value={software.find(s => s.id === detailItem.softwareId)?.namaLayanan || 'None'} icon="layers" />
+                        <DetailField label="← Perangkat Lunak Platform (Dependency)" value={software.find((s: LayananDigital) => s.id === detailItem.softwareId)?.namaLayanan || 'None'} icon="layers" />
                         <DetailField label="← Perangkat Keras Server (Dependency)" value={hardware.find(h => h.id === detailItem.perangkatServerId)?.namaPerangkat || 'None'} icon="dns" />
                         <DetailField label="← Data dan Informasi (Dependency)" value={detailItem.dataInfoDependency} icon="link" fullWidth />
                       </>
                     )}
                     {detailItem.kategori === 'Server' && (
-                      <DetailField label="→ Perangkat Lunak Platform (Dependency)" value={software.find(s => s.id === detailItem.softwareId)?.namaLayanan || 'None'} icon="layers" />
+                      <DetailField label="→ Perangkat Lunak Platform (Dependency)" value={software.find((s: LayananDigital) => s.id === detailItem.softwareId)?.namaLayanan || 'None'} icon="layers" />
                     )}
                   </div>
                 </section>
@@ -489,6 +562,19 @@ export function Hardware() {
           </div>
         )}
       </Modal>
+
+      {/* Global Confirmation Modal */}
+      <ConfirmModal 
+        isOpen={confirmConfig.isOpen}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        isLoading={confirmConfig.isLoading}
+        onClose={closeConfirm}
+        onConfirm={confirmConfig.onConfirm}
+        confirmLabel="Hapus Sekarang"
+        cancelLabel="Batal"
+        type="danger"
+      />
     </div>
   );
 }

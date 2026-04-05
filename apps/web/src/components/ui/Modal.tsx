@@ -8,6 +8,7 @@ interface ModalProps {
   maxWidth?: string; // e.g. "max-w-md", "max-w-2xl", "max-w-4xl"
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'full';
   closeOnOverlayClick?: boolean;
+  showCloseButton?: boolean;
 }
 
 const sizeClasses = {
@@ -26,7 +27,8 @@ export function Modal({
   children, 
   maxWidth,
   size = 'md',
-  closeOnOverlayClick = true
+  closeOnOverlayClick = true,
+  showCloseButton = true
 }: ModalProps) {
   const widthClass = maxWidth || sizeClasses[size];
   // Close on Escape key & Disable body scroll
@@ -63,12 +65,14 @@ export function Modal({
         {/* Header */}
         <div className="flex justify-between items-center bg-[#1A1A1A] text-white p-4 border-b-2 border-[#1A1A1A] sticky top-0 z-20">
           <h3 className="font-mono font-black uppercase text-lg tracking-tight">{title}</h3>
-          <button 
-            onClick={onClose}
-            className="hover:text-[#FFD600] transition-colors cursor-pointer"
-          >
-            <span className="material-symbols-outlined font-bold">close</span>
-          </button>
+          {showCloseButton && (
+            <button 
+              onClick={onClose}
+              className="hover:text-[#FFD600] transition-colors cursor-pointer"
+            >
+              <span className="material-symbols-outlined font-bold">close</span>
+            </button>
+          )}
         </div>
         
         {/* Body */}

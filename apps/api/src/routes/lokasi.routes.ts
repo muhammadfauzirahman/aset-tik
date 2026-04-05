@@ -31,7 +31,7 @@ router.get(
   authorize("masterData", "read"),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const data = await lokasiService.findById(parseInt(req.params.id, 10));
+      const data = await lokasiService.findById(parseInt(req.params.id as string, 10));
       res.json({ success: true, data });
     } catch (error) {
       next(error);
@@ -62,7 +62,25 @@ router.put(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const data = await lokasiService.update(
-        parseInt(req.params.id, 10),
+        parseInt(req.params.id as string, 10),
+        req.body
+      );
+      res.json({ success: true, data });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.patch(
+  "/:id",
+  authenticate,
+  authorize("masterData", "update"),
+  validate(updateLokasiSchema),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const data = await lokasiService.update(
+        parseInt(req.params.id as string, 10),
         req.body
       );
       res.json({ success: true, data });
@@ -78,7 +96,7 @@ router.delete(
   authorize("masterData", "delete"),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      await lokasiService.delete(parseInt(req.params.id, 10));
+      await lokasiService.delete(parseInt(req.params.id as string, 10));
       res.json({ success: true, message: "Lokasi berhasil dihapus." });
     } catch (error) {
       next(error);

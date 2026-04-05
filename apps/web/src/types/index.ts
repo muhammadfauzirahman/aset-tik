@@ -19,7 +19,7 @@ export interface Lokasi {
 
 export type JenisFasilitas = 'Pusat Data' | 'Pusat Komputasi' | 'Pusat Kendali';
 export type KlasifikasiTier = 'Tier 3' | 'Tier 4' | 'Non-Tier' | null;
-export type KepemilikanFasilitas = 'Sendiri' | 'BUMN' | 'Pihak Ketiga' | 'Swasta';
+export type KepemilikanFasilitas = 'Sendiri' | 'Instansi Pemerintah Lain' | 'BUMN' | 'Swasta Dalam Negeri' | 'Swasta Luar Negeri';
 export type StatusFasilitas = 'Aktif' | 'Non-Aktif' | 'Perbaikan';
 
 export interface FasilitasKomputasi {
@@ -67,7 +67,7 @@ export interface PerangkatKeras {
   pemilik: string;
   unitPengelola: string;
   statusKepemilikan: string;
-  
+
   // Specific fields
   kapasitasMemori?: string; // e.g., "64 GB"
   kapasitasPenyimpanan?: string; // e.g., "1 TB"
@@ -77,10 +77,10 @@ export interface PerangkatKeras {
   metodeAkses?: string; // e.g., "NAS"
   lokasiPenempatan?: string;
   jenisPenggunaanServer?: string; // e.g., "Server Aplikasi"
-  
+
   fasilitasId?: string;
   instansiId?: string;
-  
+
   // Dependency fields
   perangkatJaringanId?: string;   // For security/other hardware
   perangkatServerId?: string;     // For storage/software
@@ -99,14 +99,14 @@ export interface LayananDigital {
   pemilik: string;
   pengelola: string;
   statusKepemilikan: string;
-  
+
   instansiId?: string; // Unit Pengelola (from Master Data)
-  
+
   // Specific fields
   biayaLayanan?: number;
   jangkaWaktu?: string;
-  tipeCloud?: 'SaaS' | 'PaaS' | 'IaaS' | 'BDaaS' | 'SecaaS'; 
-  
+  tipeCloud?: 'SaaS' | 'PaaS' | 'IaaS' | 'BDaaS' | 'SecaaS';
+
   // Platform specific
   jenisLisensi?: string;
   validitasLisensi?: string;
@@ -114,16 +114,16 @@ export interface LayananDigital {
   jenisDatabase?: string;
   jenisUtilitas?: string;
   jenisOS?: string;
-  
+
   // SPBE Specific Cloud Fields
   unitPengembangCloud?: string;
   unitOperasionalCloud?: string;
   edukasiKeamananDependency?: string;
-  
+
   fasilitasId?: string;
   hardwareServerId?: string;      // The physical/virtual host server
   cloudDependencyId?: string;     // If platform software runs on a cloud service
-  
+
   // Cloud specific dependencies (SPBE)
   aplikasiDependency?: string;    // Notes/Placeholder for now
   dataInfoDependency?: string;    // Notes

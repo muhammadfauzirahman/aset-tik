@@ -12,20 +12,33 @@ import { SummaryGrid } from '../components/ui/SummaryGrid';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { ActionButtons } from '../components/ui/ActionButtons';
 import { DetailField } from '../components/ui/DetailField';
+import { ConfirmModal } from '../components/ui/ConfirmModal';
 
 // Hooks & Stores
 import { useAssetCRUD } from '../hooks/useAssetCRUD';
-import { useFasilitasStore } from '../store/useFasilitasStore';
-import { useMasterData } from '../store/useMasterData';
-import { useHardwareStore } from '../store/useHardwareStore';
-import { useSoftwareStore } from '../store/useSoftwareStore';
+import { useFasilitas } from '../hooks/useFasilitas';
+import { useMasterData } from '../hooks/useMasterData';
+import { useHardware } from '../hooks/useHardware';
+import { useLayananDigital } from '../hooks/useLayananDigital';
+import { useLoadingProgress } from '../hooks/useLoadingProgress';
 import type { FasilitasKomputasi, JenisFasilitas, KlasifikasiTier, KepemilikanFasilitas, StatusFasilitas } from '../types';
 
 export function FasilitasKomputasiPage() {
-  const { fasilitas, addFasilitas, updateFasilitas, deleteFasilitas } = useFasilitasStore();
-  const { instansi } = useMasterData();
-  const { hardware } = useHardwareStore();
-  const { software } = useSoftwareStore();
+  const {
+    fasilitas,
+    isLoading: isFasilitasLoading,
+    error: fasilitasError,
+    addFasilitas,
+    updateFasilitas,
+    deleteFasilitas,
+    isAdding,
+    isUpdating
+  } = useFasilitas();
+
+  const { isSaving, progress, startSaving, notifyMutationFinished, reset: resetLoading } = useLoadingProgress();
+  const { instansi, isLoading: isMasterLoading } = useMasterData();
+  const { hardware } = useHardware();
+  const { layananDigital: software } = useLayananDigital();
 
   // Form State
   const [kode, setKode] = useState('');
@@ -39,6 +52,27 @@ export function FasilitasKomputasiPage() {
   const [pengamanan, setPengamanan] = useState('');
   const [instansiId, setInstansiId] = useState('');
   const [status, setStatus] = useState<StatusFasilitas>('Aktif');
+
+  // Confirmation Modal State
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    isLoading: boolean;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    isLoading: false,
+    onConfirm: () => { }
+  });
+
+  const triggerConfirm = (title: string, message: string, onConfirm: () => void) => {
+    setConfirmConfig({ isOpen: true, title, message, isLoading: false, onConfirm });
+  };
+
+  const closeConfirm = () => setConfirmConfig(prev => ({ ...prev, isOpen: false, isLoading: false }));
 
   const resetForm = () => {
     setKode(''); setNama(''); setJenis('Pusat Data'); setBwIntra(0); setBwInter(0);
@@ -63,31 +97,55 @@ export function FasilitasKomputasiPage() {
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
+    startSaving();
     const payload: Omit<FasilitasKomputasi, 'id' | 'childAssetsCount'> = {
       kodeFasilitas: kode, namaFasilitas: nama, jenisFasilitas: jenis,
       bandwidthIntranet: bwIntra, bandwidthInternet: bwInter, lokasiFisik: lokasi,
       klasifikasiTier: jenis === 'Pusat Data' ? tier : null, kepemilikan,
       sistemPengamanan: pengamanan, instansiId, status
     };
-    if (isEditModalOpen && editingItem) updateFasilitas(editingItem.id, payload);
-    else addFasilitas(payload);
-    closeModals();
+    const options = {
+      onSuccess: () => notifyMutationFinished(closeModals),
+      onError: resetLoading
+    };
+    if (isEditModalOpen && editingItem) {
+      updateFasilitas(editingItem.id, payload, options);
+    } else {
+      addFasilitas(payload, options);
+    }
   };
 
   const [activeTab, setActiveTab] = useState<'Semua' | JenisFasilitas>('Semua');
+
   const filteredData = activeTab === 'Semua' ? fasilitas : fasilitas.filter(f => f.jenisFasilitas === activeTab);
 
-  const attachedHardware = useMemo(() => 
-    detailItem ? hardware.filter(h => h.fasilitasId === detailItem.id) : [], 
-  [detailItem, hardware]);
+  const attachedHardware = useMemo(() =>
+    detailItem ? hardware.filter(h => h.fasilitasId === detailItem.id) : [],
+    [detailItem, hardware]);
 
-  const attachedSoftware = useMemo(() => 
-    detailItem ? software.filter(s => s.fasilitasId === detailItem.id) : [], 
-  [detailItem, software]);
+  const attachedSoftware = useMemo(() =>
+    detailItem ? software.filter(s => s.fasilitasId === detailItem.id) : [],
+    [detailItem, software]);
+
+  if (isFasilitasLoading || isMasterLoading) {
+    return (
+      <div className="flex items-center justify-center h-[60vh]">
+        <div className="text-2xl font-black uppercase animate-pulse italic">Memuat Data Fasilitas...</div>
+      </div>
+    );
+  }
+
+  if (fasilitasError) {
+    return (
+      <div className="p-6 bg-red-100 border-4 border-red-600 text-red-600 font-bold">
+        Gagal memuat data: {(fasilitasError as any).message}
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
-      <PageHeader 
+      <PageHeader
         title="Fasilitas Komputasi"
         subtitle="Pusat Data, Komputasi, dan Kendali yang menjadi fondasi penempatan aset infrastruktur TIK SPBE."
         onAdd={handleAdd}
@@ -98,7 +156,7 @@ export function FasilitasKomputasiPage() {
       <SummaryGrid items={[
         { label: 'Total Fasilitas', value: fasilitas.length, color: 'yellow' },
         { label: 'Kapasitas Internet', value: `${fasilitas.reduce((a, c) => a + c.bandwidthInternet, 0)} Mbps`, color: 'green' },
-        { label: 'Aset Taut', value: fasilitas.reduce((a, c) => a + (c.childAssetsCount || 0), 0), color: 'blue' },
+        { label: 'Aset Taut', value: hardware.length + software.length, color: 'blue' },
       ]} />
 
       <FilterTabs tabs={['Semua', 'Pusat Data', 'Pusat Komputasi', 'Pusat Kendali']} activeTab={activeTab} onTabChange={setActiveTab} />
@@ -126,10 +184,20 @@ export function FasilitasKomputasiPage() {
                 </TableCell>
                 <TableCell><StatusBadge status={f.status} /></TableCell>
                 <TableCell className="text-right">
-                  <ActionButtons 
+                  <ActionButtons
                     onDetail={() => openDetailModal(f)}
                     onEdit={() => handleEdit(f)}
-                    onDelete={() => { if(confirm('Hapus fasilitas?')) deleteFasilitas(f.id) }}
+                    onDelete={() => triggerConfirm(
+                      'Hapus Fasilitas?',
+                      `Apakah Anda yakin ingin menghapus "${f.namaFasilitas}"? Seluruh perangkat yang terhubung mungkin akan kehilangan referensi lokasi.`,
+                      () => {
+                        setConfirmConfig(prev => ({ ...prev, isLoading: true }));
+                        deleteFasilitas(f.id, {
+                          onSuccess: closeConfirm,
+                          onError: () => setConfirmConfig(prev => ({ ...prev, isLoading: false }))
+                        });
+                      }
+                    )}
                   />
                 </TableCell>
               </TableRow>
@@ -140,56 +208,58 @@ export function FasilitasKomputasiPage() {
 
       <Modal isOpen={isAddModalOpen || isEditModalOpen} onClose={closeModals} title={isEditModalOpen ? "Edit Data Fasilitas" : "Tambah Data Fasilitas"} size="lg" closeOnOverlayClick={false}>
         <form onSubmit={handleSave} className="space-y-6 px-1 pb-4">
-          <section className="space-y-4">
-            <h4 className="text-xs font-mono-bold uppercase bg-[#B9FF66] border-2 border-black px-2 py-1 inline-block shadow-[2px_2px_0_0_#000]">
-              1. Profil & Klasifikasi
-            </h4>
-            <div className="grid grid-cols-2 gap-4">
-              <Input label="Kode Fasilitas" value={kode} onChange={(e) => setKode(e.target.value)} required />
-              <Select label="Jenis Fasilitas" value={jenis} onChange={(e) => setJenis(e.target.value as any)} 
-                options={[{label:'Pusat Data', value:'Pusat Data'}, {label:'Pusat Komputasi', value:'Pusat Komputasi'}, {label:'Pusat Kendali', value:'Pusat Kendali'}]}
-              />
-            </div>
-            <Input label="Nama Fasilitas" value={nama} onChange={(e) => setNama(e.target.value)} required />
-          </section>
-          
-          <section className="space-y-4 p-4 bg-gray-50 border-2 border-black border-dashed">
-            <h4 className="text-xs font-mono-bold uppercase bg-[#FFD700] border-2 border-black px-2 py-1 inline-block shadow-[2px_2px_0_0_#000]">
-              2. Kapasitas & Tiering
-            </h4>
-            <div className="grid grid-cols-2 gap-4">
-              <Input label="Bandwidth Internet (Mbps)" type="number" value={bwInter.toString()} onChange={(e) => setBwInter(Number(e.target.value))} />
-              <Input label="Bandwidth Intranet (Mbps)" type="number" value={bwIntra.toString()} onChange={(e) => setBwIntra(Number(e.target.value))} />
-              <Select label="Status Tier" value={tier || 'Non-Tier'} onChange={(e) => setTier(e.target.value as any)} disabled={jenis !== 'Pusat Data'}
-                options={[{label:'Non-Tier', value:'Non-Tier'}, {label:'Tier 3', value:'Tier 3'}, {label:'Tier 4', value:'Tier 4'}]}
-              />
-              <Select label="Kepemilikan" value={kepemilikan} onChange={(e) => setKepemilikan(e.target.value as any)}
-                options={['Sendiri', 'BUMN', 'Swasta', 'Pihak Ketiga'].map(v => ({label:v, value:v}))}
-              />
-            </div>
-          </section>
+          <fieldset disabled={isAdding || isUpdating}>
+            <section className="space-y-4">
+              <h4 className="text-xs font-mono-bold uppercase bg-[#B9FF66] border-2 border-black px-2 py-1 inline-block shadow-[2px_2px_0_0_#000]">
+                1. Profil & Klasifikasi
+              </h4>
+              <div className="grid grid-cols-2 gap-4">
+                <Input label="Kode Fasilitas" value={kode} onChange={(e) => setKode(e.target.value)} required />
+                <Select label="Jenis Fasilitas" value={jenis} onChange={(e) => setJenis(e.target.value as any)}
+                  options={[{ label: 'Pusat Data', value: 'Pusat Data' }, { label: 'Pusat Komputasi', value: 'Pusat Komputasi' }, { label: 'Pusat Kendali', value: 'Pusat Kendali' }]}
+                />
+              </div>
+              <Input label="Nama Fasilitas" value={nama} onChange={(e) => setNama(e.target.value)} required />
+            </section>
 
-          <section className="space-y-4">
-            <h4 className="text-xs font-mono-bold uppercase bg-[#00E5FF] border-2 border-black px-2 py-1 inline-block shadow-[2px_2px_0_0_#000]">
-              3. Lokasi & Keamanan
-            </h4>
-            <div className="grid grid-cols-2 gap-4">
-              <Input label="Lokasi Fisik / Gedung" value={lokasi} onChange={(e) => setLokasi(e.target.value)} required />
-              <Select label="Penanggung Jawab" value={instansiId} onChange={(e) => setInstansiId(e.target.value)} options={instansi.map(i => ({label: i.namaInstansi, value: i.id}))} />
-            </div>
-            <Textarea label="Sistem Pengamanan" value={pengamanan} onChange={(e) => setPengamanan(e.target.value)} rows={2} />
-             <Select label="Status Operasional" value={status} onChange={(e) => setStatus(e.target.value as any)}
-              options={[{label:'Aktif Beroperasi', value:'Aktif'}, {label:'Perbaikan', value:'Perbaikan'}, {label:'Non-Aktif', value:'Non-Aktif'}]}
-            />
-          </section>
+            <section className="space-y-4 p-4 bg-gray-50 border-2 border-black border-dashed mt-4">
+              <h4 className="text-xs font-mono-bold uppercase bg-[#FFD700] border-2 border-black px-2 py-1 inline-block shadow-[2px_2px_0_0_#000]">
+                2. Kapasitas & Tiering
+              </h4>
+              <div className="grid grid-cols-2 gap-4">
+                <Input label="Bandwidth Internet (Mbps)" type="number" value={bwInter.toString()} onChange={(e) => setBwInter(Number(e.target.value))} />
+                <Input label="Bandwidth Intranet (Mbps)" type="number" value={bwIntra.toString()} onChange={(e) => setBwIntra(Number(e.target.value))} />
+                <Select label="Status Tier" value={tier || 'Non-Tier'} onChange={(e) => setTier(e.target.value as any)} disabled={jenis !== 'Pusat Data'}
+                  options={[{ label: 'Non-Tier', value: 'Non-Tier' }, { label: 'Tier 3', value: 'Tier 3' }, { label: 'Tier 4', value: 'Tier 4' }]}
+                />
+                <Select label="Kepemilikan" value={kepemilikan} onChange={(e) => setKepemilikan(e.target.value as any)}
+                  options={['Sendiri', 'Instansi Pemerintah Lain', 'BUMN', 'Swasta Dalam Negeri', 'Swasta Luar Negeri'].map(v => ({label:v, value:v}))}
+                />
+              </div>
+            </section>
 
-          <div className="flex gap-3 pt-6 border-t-4 border-black bg-white pb-2">
-            <button type="button" onClick={closeModals} className="flex-1 py-3 font-black uppercase italic border-2 border-black hover:bg-gray-100 transition-all">
+            <section className="space-y-4 mt-4">
+              <h4 className="text-xs font-mono-bold uppercase bg-[#00E5FF] border-2 border-black px-2 py-1 inline-block shadow-[2px_2px_0_0_#000]">
+                3. Lokasi & Keamanan
+              </h4>
+              <div className="grid grid-cols-2 gap-4">
+                <Input label="Lokasi Fisik / Gedung" value={lokasi} onChange={(e) => setLokasi(e.target.value)} />
+                <Select label="Penanggung Jawab" value={instansiId} onChange={(e) => setInstansiId(e.target.value)} options={instansi.map(i => ({ label: i.namaInstansi, value: i.id }))} />
+              </div>
+              <Textarea label="Sistem Pengamanan" value={pengamanan} onChange={(e) => setPengamanan(e.target.value)} rows={2} />
+              <Select label="Status Operasional" value={status} onChange={(e) => setStatus(e.target.value as any)}
+                options={[{ label: 'Aktif Beroperasi', value: 'Aktif' }, { label: 'Perbaikan', value: 'Perbaikan' }, { label: 'Non-Aktif', value: 'Non-Aktif' }]}
+              />
+            </section>
+          </fieldset>
+
+          <div className="flex gap-3 pt-6 border-t-4 border-black bg-white pb-2 mt-6">
+            <button type="button" onClick={closeModals} className="flex-1 py-3 font-black uppercase italic border-2 border-black hover:bg-gray-100 transition-all" disabled={isSaving}>
               Batal
             </button>
-            <button type="submit" className="flex-[2] py-3 bg-black text-white font-black uppercase italic border-2 border-black shadow-[4px_4px_0_0_#666] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all">
+            <Button type="submit" className="flex-[2] py-3" isLoading={isSaving} progress={progress}>
               SIMPAN DATA FASILITAS
-            </button>
+            </Button>
           </div>
         </form>
       </Modal>
@@ -256,7 +326,7 @@ export function FasilitasKomputasiPage() {
             </div>
 
             <div className="flex justify-end pt-8">
-              <Button 
+              <Button
                 onClick={closeModals}
                 className="bg-black text-white hover:bg-gray-800 px-10 py-3 rounded-none border-4 border-black shadow-[4px_4px_0_0_#999] active:shadow-none active:translate-x-1 active:translate-y-1 transition-all uppercase font-black italic tracking-widest"
               >
@@ -266,6 +336,19 @@ export function FasilitasKomputasiPage() {
           </div>
         )}
       </Modal>
+
+      {/* Global Confirmation Modal */}
+      <ConfirmModal
+        isOpen={confirmConfig.isOpen}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        isLoading={confirmConfig.isLoading}
+        onClose={closeConfirm}
+        onConfirm={confirmConfig.onConfirm}
+        confirmLabel="Hapus Sekarang"
+        cancelLabel="Batal"
+        type="danger"
+      />
     </div>
   );
 }

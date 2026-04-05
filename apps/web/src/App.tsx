@@ -26,23 +26,27 @@ function UnderConstruction() {
   );
 }
 
+import { ToastProvider } from './components/ui/Toast';
+
 function App() {
   return (
-    <Routes>
-      <Route path="/login" element={<Login />} />
-      <Route path="/" element={<AppLayout />}>
-        <Route index element={<Navigate to="/dashboard" replace />} />
-        <Route path="dashboard" element={<Dashboard />} />
-        <Route path="master-data" element={<MasterData />} />
-        <Route path="fasilitas-komputasi" element={<FasilitasKomputasiPage />} />
-        <Route path="sistem-integrasi" element={<SistemIntegrasi />} />
-        <Route path="hardware" element={<Hardware />} />
-        <Route path="platform" element={<PlatformCloud />} />
-        <Route path="laporan" element={<Laporan />} />
-        <Route path="arsitektur" element={<PetaArsitektur />} />
-        <Route path="*" element={<UnderConstruction />} />
-      </Route>
-    </Routes>
+    <ToastProvider>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/" element={<AppLayout />}>
+          <Route index element={<Navigate to="/dashboard" replace />} />
+          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="master-data" element={<MasterData />} />
+          <Route path="fasilitas-komputasi" element={<FasilitasKomputasiPage />} />
+          <Route path="sistem-integrasi" element={<SistemIntegrasi />} />
+          <Route path="hardware" element={<Hardware />} />
+          <Route path="platform" element={<PlatformCloud />} />
+          <Route path="laporan" element={<Laporan />} />
+          <Route path="arsitektur" element={<PetaArsitektur />} />
+          <Route path="*" element={<UnderConstruction />} />
+        </Route>
+      </Routes>
+    </ToastProvider>
   );
 }
 

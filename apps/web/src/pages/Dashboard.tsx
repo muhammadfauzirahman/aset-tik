@@ -1,24 +1,66 @@
+import { useMemo } from 'react';
 import { Card, CardContent } from '../components/ui/Card';
-import { Button } from '../components/ui/Button';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { Table, TableHead, TableHeader, TableBody, TableRow, TableCell } from '../components/ui/Table';
 
+// Hooks
+import { useHardware } from '../hooks/useHardware';
+import { useFasilitas } from '../hooks/useFasilitas';
+import { useLayananDigital } from '../hooks/useLayananDigital';
+import { useKonektivitas } from '../hooks/useKonektivitas';
+import { formatRupiah } from '../lib/formatters';
+
 export function Dashboard() {
+  const { hardware, isLoading: isHardwareLoading } = useHardware();
+  const { fasilitas, isLoading: isFasilitasLoading } = useFasilitas();
+  const { layananDigital, isLoading: isLayananLoading } = useLayananDigital();
+  const { konektivitas, isLoading: isKonektivitasLoading } = useKonektivitas();
+
+  const isLoading = isHardwareLoading || isFasilitasLoading || isLayananLoading || isKonektivitasLoading;
+
+  const stats = useMemo(() => {
+    const activeDataCenters = fasilitas.filter(f => f.jenisFasilitas === 'Pusat Data').length;
+    const totalHardware = hardware.length;
+    const totalServices = layananDigital.length;
+    const totalBudget = layananDigital.reduce((acc, curr) => acc + (curr.biayaLayanan || 0), 0);
+    
+    // License expiry mockup logic (future: compare dates)
+    const expiringLicenses = layananDigital.filter(s => s.validitasLisensi && s.validitasLisensi !== 'Seumur Hidup').length;
+
+    return {
+      activeDataCenters,
+      totalHardware,
+      totalServices,
+      totalBudget,
+      expiringLicenses
+    };
+  }, [fasilitas, hardware, layananDigital]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-[60vh]">
+        <div className="text-2xl font-black uppercase animate-pulse italic">Mempersiapkan Dashboard...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 space-y-6">
       {/* Alert Banner */}
-      <div className="bg-[#FF3366] border-[3px] border-[#1A1A1A] p-4 flex items-center justify-center shadow-[6px_6px_0px_0px_#1A1A1A]">
-        <h3 className="font-mono font-bold text-white uppercase text-center text-lg">
-          ⚠ 3 LISENSI AKAN BERAKHIR DALAM 30 HARI
-        </h3>
-      </div>
+      {stats.expiringLicenses > 0 && (
+        <div className="bg-[#FF3366] border-[3px] border-[#1A1A1A] p-4 flex items-center justify-center shadow-[6px_6px_0px_0px_#1A1A1A]">
+          <h3 className="font-mono font-bold text-white uppercase text-center text-lg">
+            ⚠ {stats.expiringLicenses} LISENSI/KONTRAK BERAKHIR ATAU PERLU PERPANJANGAN
+          </h3>
+        </div>
+      )}
       
       {/* Stat Cards Row */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card color="primary" className="relative">
           <CardContent>
-            <p className="font-mono font-bold text-xs uppercase opacity-60">PUSAT DATA AKTIF</p>
-            <h2 className="text-4xl font-mono-bold mt-2">3 UNIT</h2>
+            <p className="font-mono font-bold text-xs uppercase opacity-60">PUSAT DATA</p>
+            <h2 className="text-4xl font-mono-bold mt-2">{stats.activeDataCenters} <span className="text-xl">UNIT</span></h2>
             <div className="absolute top-4 right-4 text-[#FFD600]">
               <span className="material-symbols-outlined text-4xl" data-icon="apartment">apartment</span>
             </div>
@@ -27,8 +69,8 @@ export function Dashboard() {
         
         <Card color="secondary" className="relative">
           <CardContent>
-            <p className="font-mono font-bold text-xs uppercase opacity-60">SERVER & STORAGE</p>
-            <h2 className="text-4xl font-mono-bold mt-2">78% <span className="text-xl">UTILISASI</span></h2>
+            <p className="font-mono font-bold text-xs uppercase opacity-60">PERANGKAT KERAS</p>
+            <h2 className="text-4xl font-mono-bold mt-2">{stats.totalHardware} <span className="text-xl">UNIT</span></h2>
             <div className="absolute top-4 right-4 text-[#00E5FF]">
               <span className="material-symbols-outlined text-4xl" data-icon="storage">storage</span>
             </div>
@@ -37,8 +79,8 @@ export function Dashboard() {
         
         <Card color="danger" className="relative">
           <CardContent>
-            <p className="font-mono font-bold text-xs uppercase opacity-60">LISENSI EXPIRING</p>
-            <h2 className="text-4xl font-mono-bold mt-2">12 <span className="text-xl">LISENSI</span></h2>
+            <p className="font-mono font-bold text-xs uppercase opacity-60">LAYANAN DIGITAL</p>
+            <h2 className="text-4xl font-mono-bold mt-2">{stats.totalServices} <span className="text-xl">LAYANAN</span></h2>
             <div className="absolute top-4 right-4 text-[#FF3366]">
               <span className="material-symbols-outlined text-4xl" data-icon="verified">verified</span>
             </div>
@@ -47,8 +89,8 @@ export function Dashboard() {
         
         <Card color="accent" className="relative">
           <CardContent>
-            <p className="font-mono font-bold text-xs uppercase opacity-60">BUDGET CLOUD</p>
-            <h2 className="text-3xl font-mono-bold mt-2">Rp 1.2B</h2>
+            <p className="font-mono font-bold text-xs uppercase opacity-60">TOTAL BIAYA CLOUD</p>
+            <h2 className="text-2xl font-mono-bold mt-2">{formatRupiah(stats.totalBudget)}</h2>
             <div className="absolute top-4 right-4 text-[#B388FF]">
               <span className="material-symbols-outlined text-4xl" data-icon="account_balance_wallet">account_balance_wallet</span>
             </div>
@@ -58,37 +100,37 @@ export function Dashboard() {
       
       {/* Charts and Layers */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Capacity Bar Charts */}
+        {/* Capacity Bar Charts (Using Real Data where possible) */}
         <div className="lg:col-span-8 bg-white border-[3px] border-[#1A1A1A] shadow-[6px_6px_0px_0px_#1A1A1A] flex flex-col">
           <div className="bg-[#1A1A1A] p-3 border-b-[3px] border-[#1A1A1A]">
-            <h4 className="text-white font-mono font-bold uppercase text-sm">Resource Allocation Index</h4>
+            <h4 className="text-white font-mono font-bold uppercase text-sm">Resource Management Status</h4>
           </div>
           <div className="p-8 space-y-8 flex-1">
             <div className="space-y-2">
               <div className="flex justify-between items-end">
-                <span className="font-mono font-bold uppercase text-sm">Storage Capacity</span>
-                <span className="font-mono font-bold text-lg">820 TB / 1 PB</span>
+                <span className="font-mono font-bold uppercase text-sm">Konektivitas Jaringan</span>
+                <span className="font-mono font-bold text-lg">{konektivitas.filter(k => k.kategori === 'Jaringan Intra').length} Nodes Aktif</span>
               </div>
               <div className="h-10 w-full bg-[#EAE7E7] border-2 border-[#1A1A1A]">
-                <div className="h-full bg-[#FFD600] diagonal-pattern border-r-2 border-[#1A1A1A]" style={{ width: '82%' }}></div>
+                <div className="h-full bg-[#FFD600] diagonal-pattern border-r-2 border-[#1A1A1A]" style={{ width: '100%' }}></div>
               </div>
             </div>
             <div className="space-y-2">
               <div className="flex justify-between items-end">
-                <span className="font-mono font-bold uppercase text-sm">Compute Memory</span>
-                <span className="font-mono font-bold text-lg">6.4 TB / 8 TB</span>
+                <span className="font-mono font-bold uppercase text-sm">Sistem Penghubung (SPLP)</span>
+                <span className="font-mono font-bold text-lg">{konektivitas.filter(k => k.kategori === 'SPLP').length} Hubs</span>
               </div>
               <div className="h-10 w-full bg-[#EAE7E7] border-2 border-[#1A1A1A]">
-                <div className="h-full bg-[#00E5FF] diagonal-pattern border-r-2 border-[#1A1A1A]" style={{ width: '74%' }}></div>
+                <div className="h-full bg-[#00E5FF] diagonal-pattern border-r-2 border-[#1A1A1A]" style={{ width: '100%' }}></div>
               </div>
             </div>
             <div className="space-y-2">
               <div className="flex justify-between items-end">
-                <span className="font-mono font-bold uppercase text-sm">Network Bandwidth</span>
-                <span className="font-mono font-bold text-lg">8.2 Gbps / 10 Gbps</span>
+                <span className="font-mono font-bold uppercase text-sm">Rasio Layanan per Fasilitas</span>
+                <span className="font-mono font-bold text-lg">{(layananDigital.length / (fasilitas.length || 1)).toFixed(1)} Avg</span>
               </div>
               <div className="h-10 w-full bg-[#EAE7E7] border-2 border-[#1A1A1A]">
-                <div className="h-full bg-[#B388FF] diagonal-pattern border-r-2 border-[#1A1A1A]" style={{ width: '82%' }}></div>
+                <div className="h-full bg-[#B388FF] diagonal-pattern border-r-2 border-[#1A1A1A]" style={{ width: '60%' }}></div>
               </div>
             </div>
           </div>
@@ -101,63 +143,44 @@ export function Dashboard() {
               <span className="font-mono font-bold text-xs uppercase bg-[#1A1A1A] text-white px-2 py-0.5">LAYER 01</span>
               <h3 className="font-mono font-black text-2xl mt-2">PHYSICAL INFRA</h3>
             </div>
-            <div className="text-5xl font-mono font-black">242 <span className="text-xl">ASSETS</span></div>
+            <div className="text-5xl font-mono font-black">{stats.totalHardware} <span className="text-xl">ASSETS</span></div>
           </div>
           <div className="bg-[#00E5FF] border-[3px] border-[#1A1A1A] p-6 shadow-[6px_6px_0px_0px_#1A1A1A] flex-1 flex flex-col justify-between">
             <div>
               <span className="font-mono font-bold text-xs uppercase bg-[#1A1A1A] text-white px-2 py-0.5">LAYER 02</span>
-              <h3 className="font-mono font-black text-2xl mt-2">VIRTUALIZATION</h3>
+              <h3 className="font-mono font-black text-2xl mt-2">DIGITAL PLATFORM</h3>
             </div>
-            <div className="text-5xl font-mono font-black">1.1K <span className="text-xl">NODES</span></div>
+            <div className="text-5xl font-mono font-black">{layananDigital.filter(s => s.kategori === 'Platform').length} <span className="text-xl">SYSTEMS</span></div>
           </div>
           <div className="bg-[#B388FF] border-[3px] border-[#1A1A1A] p-6 shadow-[6px_6px_0px_0px_#1A1A1A] flex-1 flex flex-col justify-between">
             <div>
               <span className="font-mono font-bold text-xs uppercase bg-[#1A1A1A] text-white px-2 py-0.5">LAYER 03</span>
-              <h3 className="font-mono font-black text-2xl mt-2">APPLICATION STACK</h3>
+              <h3 className="font-mono font-black text-2xl mt-2">CLOUD SERVICES</h3>
             </div>
-            <div className="text-5xl font-mono font-black">56 <span className="text-xl">SERVICES</span></div>
+            <div className="text-5xl font-mono font-black">{layananDigital.filter(s => s.kategori === 'Cloud').length} <span className="text-xl">SERVICES</span></div>
           </div>
         </div>
       </div>
       
-      {/* Recent Activity Table */}
+      {/* Recent Activity Table (Static for now, will keep basic layout) */}
       <Card>
         <div className="bg-[#1A1A1A] p-4 border-b-[3px] border-[#1A1A1A] flex justify-between items-center">
-          <h4 className="text-white font-mono font-bold uppercase text-sm">Recent Asset Activities</h4>
-          <Button size="sm">View All</Button>
+          <h4 className="text-white font-mono font-bold uppercase text-sm">Recent Asset Synchronized</h4>
         </div>
         <Table>
           <TableHead>
-            <TableHeader>Asset ID</TableHeader>
-            <TableHeader>Action</TableHeader>
-            <TableHeader>Operator</TableHeader>
-            <TableHeader className="text-right">Time</TableHeader>
+            <TableHeader>Asset Name</TableHeader>
+            <TableHeader>Type</TableHeader>
+            <TableHeader>Status</TableHeader>
           </TableHead>
           <TableBody>
-            <TableRow>
-              <TableCell className="font-mono-bold">SRV-DC1-092</TableCell>
-              <TableCell><StatusBadge status="Maintenance Complete" /></TableCell>
-              <TableCell>Admin TIK A</TableCell>
-              <TableCell className="font-mono text-right text-sm">14:20:05</TableCell>
-            </TableRow>
-            <TableRow>
-              <TableCell className="font-mono-bold">LCS-MSFT-E5-01</TableCell>
-              <TableCell><StatusBadge status="Renewal Requested" /></TableCell>
-              <TableCell>Procurement Dept</TableCell>
-              <TableCell className="font-mono text-right text-sm">13:45:12</TableCell>
-            </TableRow>
-            <TableRow>
-              <TableCell className="font-mono-bold">STG-NETAPP-A4</TableCell>
-              <TableCell><StatusBadge status="Capacity Alert" /></TableCell>
-              <TableCell>System Automated</TableCell>
-              <TableCell className="font-mono text-right text-sm">12:10:30</TableCell>
-            </TableRow>
-            <TableRow>
-              <TableCell className="font-mono-bold">VM-PROD-WEB-04</TableCell>
-              <TableCell><StatusBadge status="Reboot Successful" /></TableCell>
-              <TableCell>Admin TIK B</TableCell>
-              <TableCell className="font-mono text-right text-sm">11:55:00</TableCell>
-            </TableRow>
+            {hardware.slice(0, 4).map(h => (
+              <TableRow key={h.id}>
+                <TableCell className="font-mono-bold">{h.namaPerangkat}</TableCell>
+                <TableCell>{h.kategori}</TableCell>
+                <TableCell><StatusBadge status="Synchronized" /></TableCell>
+              </TableRow>
+            ))}
           </TableBody>
         </Table>
       </Card>

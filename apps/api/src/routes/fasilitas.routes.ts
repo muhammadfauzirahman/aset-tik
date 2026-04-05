@@ -49,7 +49,7 @@ router.get(
   authorize("fasilitas", "read"),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const id = parseInt(req.params.id, 10);
+      const id = parseInt(req.params.id as string, 10);
       const data = await fasilitasService.findById(id);
 
       res.json({ success: true, data });
@@ -90,7 +90,24 @@ router.put(
   validate(updateFasilitasSchema),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const id = parseInt(req.params.id, 10);
+      const id = parseInt(req.params.id as string, 10);
+      const data = await fasilitasService.update(id, req.body);
+
+      res.json({ success: true, data });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.patch(
+  "/:id",
+  authenticate,
+  authorize("fasilitas", "update"),
+  validate(updateFasilitasSchema),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const id = parseInt(req.params.id as string, 10);
       const data = await fasilitasService.update(id, req.body);
 
       res.json({ success: true, data });
@@ -110,7 +127,7 @@ router.delete(
   authorize("fasilitas", "delete"),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const id = parseInt(req.params.id, 10);
+      const id = parseInt(req.params.id as string, 10);
       await fasilitasService.delete(id);
 
       res.json({

@@ -14,8 +14,8 @@ const baseFasilitasSchema = z.object({
     .nullable()
     .optional()
     .default(null),
-  kepemilikan: z.enum(["Sendiri", "BUMN", "Pihak Ketiga", "Swasta"], {
-    errorMap: () => ({ message: "Kepemilikan harus: Sendiri, BUMN, Pihak Ketiga, atau Swasta." }),
+  kepemilikan: z.enum(["Sendiri", "Instansi Pemerintah Lain", "BUMN", "Swasta Dalam Negeri", "Swasta Luar Negeri"], {
+    errorMap: () => ({ message: "Kepemilikan harus: Sendiri, Instansi Pemerintah Lain, BUMN, Swasta Dalam Negeri, atau Swasta Luar Negeri." }),
   }),
   sistemPengamanan: z.string().default(""),
   instansiId: z.number().int().positive("Instansi wajib dipilih."),

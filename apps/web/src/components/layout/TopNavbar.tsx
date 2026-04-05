@@ -1,13 +1,12 @@
-import { NavLink } from 'react-router-dom';
-import { useState } from 'react';
 import { authClient } from '../../lib/auth-client';
+import { useState } from 'react';
 import { Button } from '../ui/Button';
 
-export function TopNavbar() {
+export function TopNavbar({ onToggleSidebar }: { onToggleSidebar: () => void }) {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const { data: realSession, isPending } = authClient.useSession();
-
-  // Mock session for development when .env is missing
+  
+  // ... existing mock session ...
   const mockSession = {
     user: {
       id: 'mock-user-id',
@@ -26,6 +25,8 @@ export function TopNavbar() {
   };
 
   const session = realSession || mockSession;
+  // Use session for logging or debugging if needed
+  console.log('Current user:', session.user.name);
 
   const handleLogout = async () => {
     if (isLoggingOut) return;
@@ -54,37 +55,27 @@ export function TopNavbar() {
   };
 
   return (
-    <nav className="fixed top-0 left-0 flex justify-between items-center w-full px-6 h-16 z-50 bg-[#1A1A1A] border-b-[3px] border-[#FFD600] shadow-[6px_6px_0px_0px_#1A1A1A]">
-      <div className="px-4 py-1 bg-[#1A1A1A] text-white font-mono font-bold text-xl uppercase border-2 border-white">
-        ASETI-TIK
-      </div>
-      <div className="flex items-center gap-6">
-        <div className="hidden md:flex gap-8">
-          <NavLink 
-            to="/dashboard" 
-            className={({ isActive }) => 
-              `font-mono text-sm uppercase transition-none ${isActive ? 'text-[#FFD600] font-bold underline decoration-[3px]' : 'text-white hover:bg-[#FFD600] hover:text-[#1A1A1A]'}`
-            }
-          >
-            Dashboard
-          </NavLink>
-          <NavLink 
-            to="/master-data" 
-            className={({ isActive }) => 
-              `font-mono text-sm uppercase transition-none ${isActive ? 'text-[#FFD600] font-bold underline decoration-[3px]' : 'text-white hover:bg-[#FFD600] hover:text-[#1A1A1A]'}`
-            }
-          >
-            Master Data
-          </NavLink>
-          <a className="text-white uppercase font-mono text-sm hover:bg-[#FFD600] hover:text-[#1A1A1A] transition-none" href="#">Infrastruktur</a>
+    <nav className="fixed top-0 left-0 flex justify-between items-center w-full px-4 md:px-6 h-16 z-50 bg-[#1A1A1A] border-b-[3px] border-[#FFD600] shadow-[0px_4px_10px_rgba(0,0,0,0.3)]">
+      <div className="flex items-center gap-2">
+        <button 
+          onClick={onToggleSidebar}
+          className="md:hidden flex items-center justify-center w-10 h-10 text-[#FFD600] hover:bg-white/10 active:bg-white/20 transition-all rounded-none border-2 border-[#FFD600] shadow-[2px_2px_0_0_#000]"
+        >
+          <span className="material-symbols-outlined font-black">menu</span>
+        </button>
+        <div className="px-3 md:px-4 py-1 bg-[#1A1A1A] text-white font-mono font-bold text-lg md:text-xl uppercase border-2 border-white">
+          ASETI-TIK
         </div>
-        <div className="flex items-center gap-4 border-l-2 border-white pl-6">
-          <span className="material-symbols-outlined text-[#FFD600] cursor-pointer" data-icon="notifications">notifications</span>
-          <div className="w-8 h-8 bg-[#FFD600] border-2 border-white flex items-center justify-center font-mono font-bold text-[#1A1A1A]">
+      </div>
+
+      <div className="flex items-center gap-3 md:gap-6">
+        <div className="flex items-center gap-2 md:gap-4 border-l-2 border-white pl-4 md:pl-6">
+          <span className="material-symbols-outlined text-[#FFD600] cursor-pointer hidden sm:block" data-icon="notifications">notifications</span>
+          <div className="w-8 h-8 bg-[#FFD600] border-2 border-white flex items-center justify-center font-mono font-bold text-[#1A1A1A] text-xs">
             TIK
           </div>
           
-          <div className="flex flex-col items-end">
+          <div className="hidden sm:flex flex-col items-end">
             <span className="text-[#FFD600] font-mono text-[10px] uppercase font-bold">
               {isPending ? 'Loading...' : session?.user ? session.user.email : 'No Active Session'}
             </span>
@@ -96,7 +87,7 @@ export function TopNavbar() {
               size="sm" 
               onClick={handleLogout}
               disabled={isLoggingOut}
-              className="uppercase font-mono font-bold text-[10px] py-1 h-auto disabled:opacity-50"
+              className="uppercase font-mono font-bold text-[9px] md:text-[10px] py-1 h-auto disabled:opacity-50 border-2 border-white"
             >
               {isLoggingOut ? '...' : 'Logout'}
             </Button>

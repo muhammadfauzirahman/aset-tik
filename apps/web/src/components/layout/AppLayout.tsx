@@ -1,4 +1,5 @@
-import { Outlet, Navigate } from 'react-router-dom';
+import { Outlet } from 'react-router-dom';
+import { useState } from 'react';
 import { TopNavbar } from './TopNavbar';
 import { Sidebar } from './Sidebar';
 import { authClient } from '../../lib/auth-client';
@@ -6,25 +7,8 @@ import { authClient } from '../../lib/auth-client';
 export function AppLayout() {
   const { data: realSession, isPending } = authClient.useSession();
 
-  // Mock session for development when .env is missing
-  const mockSession = {
-    user: {
-      id: 'mock-user-id',
-      email: 'admin@aseti-tik.local',
-      name: 'Administrator (Mock)',
-      role: 'admin',
-    },
-    session: {
-      id: 'mock-session-id',
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      token: 'mock-token',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      userId: 'mock-user-id',
-    }
-  };
-
-  const session = realSession || mockSession;
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
   if (isPending && !realSession) {
     return (
@@ -37,11 +21,20 @@ export function AppLayout() {
   }
 
   return (
-    <div className="text-[#1A1A1A] font-body bg-[#F5F0E8] min-h-screen">
-      <TopNavbar />
-      <Sidebar />
-      <main className="md:ml-64 pt-16 min-h-screen flex flex-col">
-        <div className="flex-1">
+    <div className="text-[#1A1A1A] font-body bg-[#F5F0E8] min-h-screen overflow-x-hidden">
+      <TopNavbar onToggleSidebar={toggleSidebar} />
+      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
+      
+      {/* Overlay for mobile sidebar */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[35] md:hidden transition-opacity cursor-pointer"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
+      <main className="md:ml-64 pt-16 min-h-screen flex flex-col transition-all duration-300">
+        <div className="flex-1 p-4 md:p-8">
           <Outlet />
         </div>
         {/* Footer */}
