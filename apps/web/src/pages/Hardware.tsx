@@ -26,7 +26,7 @@ import { useLoadingProgress } from '../hooks/useLoadingProgress';
 import type { PerangkatKeras, HardwareKategori, FasilitasKomputasi, LayananDigital, Instansi } from '../types';
 
 // Formatters
-import { formatRupiah, parseRupiah } from '../lib/formatters';
+// (formatRupiah and parseRupiah removed as they are currently unused in this file)
 
 export function Hardware() {
   const { 

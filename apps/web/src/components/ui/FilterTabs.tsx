@@ -1,4 +1,4 @@
-import React from 'react';
+// Removed unused React import
 
 interface FilterTabsProps<T extends string> {
   tabs: readonly T[];

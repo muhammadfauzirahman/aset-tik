@@ -51,7 +51,7 @@ export function SistemIntegrasi() {
   } = useTable({ data: filteredDataRaw });
 
   const handleTabChange = (tab: any) => {
-    setActiveTab(tab);
+    setActiveFilter(tab);
     setCurrentPage(1);
     setSearchQuery('');
   };
