@@ -36,12 +36,18 @@ export function TableHeader({
   const isSorted = activeSortConfig?.key === sortKey;
   const isAsc = activeSortConfig?.direction === 'asc';
 
+  const alignmentClass = className.includes('text-right') 
+    ? 'justify-end' 
+    : className.includes('text-center') 
+      ? 'justify-center' 
+      : 'justify-start';
+
   return (
     <th 
       className={`p-4 font-mono font-bold text-xs uppercase ${sortKey ? 'cursor-pointer hover:bg-[#FFD600] transition-colors group' : ''} ${className}`}
       onClick={sortKey && onSort ? () => onSort(sortKey) : undefined}
     >
-      <div className="flex items-center gap-1">
+      <div className={`flex items-center gap-1 ${alignmentClass}`}>
         {children}
         {sortKey && (
           <span className={`material-symbols-outlined text-[14px] font-black transition-opacity ${isSorted ? 'opacity-100' : 'opacity-20 group-hover:opacity-100'}`}>
